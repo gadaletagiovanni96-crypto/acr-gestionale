@@ -117,3 +117,9 @@ td.right { text-align: right; white-space: nowrap; }
   margin-bottom: 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Leggera ombra per dare profondità */
 }
+.nav-logo {
+  height: 24px; /* Modifica questo valore per adattarlo all'altezza del tuo header */
+  width: auto;
+  margin-right: 8px; /* Spazio tra il logo e il testo */
+  vertical-align: middle;
+}

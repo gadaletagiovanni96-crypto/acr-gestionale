@@ -12,7 +12,7 @@ function Layout() {
   return (
     <>
       <header className="top">
-        <div className="brand"><span className="mark" />ACR Sant'Achille · Molfetta</div>
+        <div className="brand"><img src="/logo.png" alt="Logo" className="nav-logo" />ACR Sant'Achille · Molfetta</div>
         <nav>
           <NavLink to="/" end>Ragazzi</NavLink>
           <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
