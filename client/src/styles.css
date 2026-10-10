@@ -122,3 +122,22 @@ td.right { text-align: right; white-space: nowrap; }
   margin-right: 8px; /* Spazio tra il logo e il testo */
   vertical-align: middle;
 }
+.login-side {
+  position: relative;
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 60px;
+  color: #ffffff;
+  
+  /* Regole per l'immagine di sfondo (l'immagine in sé arriva dal JSX) */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* (Mantieni anche le regole per .login-logo, h1, p e la media query che ti ho inviato prima) */

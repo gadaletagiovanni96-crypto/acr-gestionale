@@ -17,6 +17,12 @@ export default function Login() {
 
   return (
     <div className="login">
+      <section 
+        className="login-side"
+        style={{
+          backgroundImage: "linear-gradient(135deg, rgba(10, 37, 64, 0.9) 0%, rgba(15, 76, 129, 0.75) 100%), url('/foto.jpg')"
+        }}
+      ></section>
       <section className="login-side">
         <img src="/logo.png" alt="Logo ACR" className="login-logo" />
         <h1>ACR Parrocchia Sant'Achille</h1>
