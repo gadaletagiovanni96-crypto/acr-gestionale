@@ -115,7 +115,6 @@ td.right { text-align: right; white-space: nowrap; }
   width: 80px; /* Adatta la dimensione in base al tuo logo */
   height: auto;
   margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Leggera ombra per dare profondità */
 }
 .nav-logo {
   height: 24px; /* Modifica questo valore per adattarlo all'altezza del tuo header */
