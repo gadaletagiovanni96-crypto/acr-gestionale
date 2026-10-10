@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
 const Group = require('../models/Group');
 const { auth, soloAdmin } = require('../middleware/auth');
@@ -164,6 +165,93 @@ router.get('/pdf', async (req, res) => {
   doc.end();
 });
 
+router.get('/xlsx', async (req, res) => {
+  const admin = req.user.ruolo === 'admin';
+  const f = filtroDa(req);
+  const [members, groups] = await Promise.all([
+    f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
+    Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
+  ]);
+
+  const sezioni = [];
+  for (const g of groups) {
+    const lista = members.filter((m) => !m.trasferito && String(m.gruppo) === String(g._id));
+    if (lista.length) sezioni.push({ titolo: g.nome, educatori: g.educatori.map((e) => `${e.nome} ${e.cognome}`.trim()), lista });
+  }
+  const senza = members.filter((m) => !m.trasferito && !m.gruppo);
+  if (senza.length) sezioni.push({ titolo: 'Senza gruppo', senzaEducatori: true, educatori: [], lista: senza });
+  const trasf = members.filter((m) => m.trasferito);
+  if (admin && trasf.length) sezioni.push({ titolo: 'Trasferiti', senzaEducatori: true, trasferiti: true, educatori: [], lista: trasf });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "ACR Parrocchia Sant'Achille - Molfetta";
+  const usati = new Set(['riepilogo']);
+  const nomeFoglio = (n) => { // Excel: max 31 caratteri, niente \ / ? * [ ] : e nomi univoci
+    const base = (n.replace(/[\\/?*[\]:]/g, ' ').trim() || 'Foglio').slice(0, 26);
+    let nome = base, i = 2;
+    while (usati.has(nome.toLowerCase())) nome = `${base} ${i++}`;
+    usati.add(nome.toLowerCase());
+    return nome;
+  };
+  const INK = 'FF17324D';
+
+  // Foglio iniziale con il riepilogo dei gruppi
+  const riep = wb.addWorksheet('Riepilogo');
+  riep.columns = [{ header: 'Gruppo', key: 'g', width: 32 }, { header: 'Educatori', key: 'e', width: 40 },
+    { header: 'Ragazzi', key: 'n', width: 10 }, { header: 'Iscritti', key: 'i', width: 10 }, { header: 'Incassato', key: 't', width: 14 }];
+  riep.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  riep.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INK } };
+  riep.getColumn('t').numFmt = '"€" #,##0.00';
+
+  for (const s of sezioni) {
+    const cols = [
+      { k: 'n', t: 'N.', w: 5 }, { k: 'cognome', t: 'Cognome', w: 20 }, { k: 'nome', t: 'Nome', w: 18 },
+      { k: 'nascita', t: 'Data di nascita', w: 14 }, { k: 'luogo', t: 'Luogo di nascita', w: 22 },
+      { k: 'via', t: 'Via', w: 30 }, { k: 'citta', t: 'Città', w: 16 },
+      { k: 'genitore', t: 'Genitore', w: 22 }, { k: 'tel', t: 'Telefono genitore', w: 18 },
+      { k: 'stato', t: 'Iscrizione', w: 15 }, { k: 'quota', t: 'Quota versata', w: 14 }, { k: 'dataV', t: 'Data versamento', w: 16 },
+    ];
+    if (s.trasferiti) cols.push({ k: 'trasf', t: 'Trasferito a', w: 28 });
+
+    const ws = wb.addWorksheet(nomeFoglio(s.titolo));
+    ws.columns = cols.map((c) => ({ key: c.k, width: c.w }));
+    ws.getCell('A1').value = s.titolo;
+    ws.getCell('A1').font = { bold: true, size: 14, color: { argb: INK } };
+    if (!s.senzaEducatori) ws.getCell('A2').value = 'Educatori: ' + (s.educatori.join(', ') || 'nessuno assegnato');
+    const head = ws.getRow(4);
+    head.values = cols.map((c) => c.t);
+    head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INK } };
+    head.alignment = { vertical: 'middle', wrapText: true };
+
+    s.lista.forEach((m, i) => {
+      const pagato = m.quotaVersata > 0;
+      ws.addRow({
+        n: i + 1, cognome: m.cognome, nome: m.nome, nascita: m.dataNascita, luogo: m.luogoNascita,
+        via: m.indirizzo, citta: m.citta, genitore: m.nomeGenitore, tel: m.telefonoGenitore,
+        stato: pagato ? 'Iscritto' : 'Da completare', quota: pagato ? m.quotaVersata : null, dataV: pagato ? m.dataVersamento : null,
+        trasf: s.trasferiti ? `${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + new Date(m.dataTrasferimento).toLocaleDateString('it-IT') + ')' : ''}` : undefined,
+      });
+    });
+    ws.getColumn('nascita').numFmt = 'dd/mm/yyyy';
+    ws.getColumn('dataV').numFmt = 'dd/mm/yyyy';
+    ws.getColumn('quota').numFmt = '"€" #,##0.00';
+    ws.views = [{ state: 'frozen', ySplit: 4 }];
+    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: cols.length } };
+    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+    if (!s.trasferiti) {
+      const pagati = s.lista.filter((m) => m.quotaVersata > 0);
+      riep.addRow({ g: s.titolo, e: s.educatori.join(', '), n: s.lista.length, i: pagati.length, t: pagati.reduce((a, m) => a + m.quotaVersata, 0) });
+    }
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="elenco-ragazzi-acr-sant-achille.xlsx"');
+  await wb.xlsx.write(res);
+  res.end();
+});
+
 router.get('/:id', async (req, res) => {
   const m = req.member;
   const fratelli = m.familyId
@@ -176,6 +264,9 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   res.status(201).json(await Member.create({ ...pulisci(req.body), creatoDa: req.user._id }));
 });
+
+
+
 
 // Tutti gli educatori possono modificare qualsiasi scheda
 router.put('/:id', async (req, res) => {

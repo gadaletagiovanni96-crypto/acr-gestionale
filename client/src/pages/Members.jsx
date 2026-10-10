@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, eta, dataIt, euro, labelGruppo, scaricaPdf } from '../api';
+import { api, eta, dataIt, euro, labelGruppo, scaricaPdf, scaricaExcel } from '../api';
 import { useAuth } from '../auth.jsx';
 
 export default function Members() {
@@ -12,6 +12,7 @@ export default function Members() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [xlsBusy, setXlsBusy] = useState(false);
 
   useEffect(() => {
     Promise.all([api.get('/members'), api.get('/groups')])
@@ -51,6 +52,12 @@ export default function Members() {
     setPdfBusy(false);
   };
 
+    const xls = async () => {
+    setErr(''); setXlsBusy(true);
+    try { await scaricaExcel(filtro); } catch (e) { setErr(e.message); }
+    setXlsBusy(false);
+  };
+
   return (
     <>
       <div className="page-head">
@@ -60,6 +67,7 @@ export default function Members() {
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
           <button className="ghost" onClick={pdf} disabled={pdfBusy}>{pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'}</button>
+          <button className="ghost" onClick={xls} disabled={xlsBusy}>{xlsBusy ? 'Creo il foglio…' : 'Scarica Excel'}</button>
           <Link className="button primary" to="/iscritti/nuovo">Nuova iscrizione</Link>
         </div>
       </div>

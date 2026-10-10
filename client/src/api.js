@@ -55,3 +55,19 @@ export async function scaricaPdf(filtro) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function scaricaExcel(filtro) {
+  const p = new URLSearchParams();
+  Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
+  const res = await fetch('/api/members/xlsx?' + p, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) {
+    const d = await res.json().catch(() => null);
+    throw new Error(d?.message || 'Impossibile creare il foglio Excel');
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'elenco-ragazzi-acr-sant-achille.xlsx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
