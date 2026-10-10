@@ -17,17 +17,19 @@ export default function Login() {
 
   return (
     <div className="login">
+      {/* Unica sezione visiva che contiene SIA lo sfondo che i testi */}
       <section 
         className="login-side"
         style={{
           backgroundImage: "linear-gradient(135deg, rgba(10, 37, 64, 0.9) 0%, rgba(15, 76, 129, 0.75) 100%), url('/foto.jpg')"
         }}
-      ></section>
-      <section className="login-side">
+      >
         <img src="/logo.png" alt="Logo ACR" className="login-logo" />
         <h1>ACR Parrocchia Sant'Achille</h1>
         <p>Gestionale per gruppi, iscrizioni e raccolta quote.</p>
       </section>
+
+      {/* Il form rimane invariato */}
       <form className="login-form" onSubmit={submit}>
         <h2>Accedi</h2>
         <div className="segmented" role="radiogroup" aria-label="Tipo di account">
