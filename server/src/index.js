@@ -17,6 +17,17 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/groups', require('./routes/groups'));
 app.use('/api/members', require('./routes/members'));
 app.use('/api/seasons', require('./routes/seasons'));
+
+app.get('/api/ping', async (req, res) => {
+  try {
+    // Esegue una lettura leggerissima per mantenere sveglio MongoDB
+    await User.findOne().select('_id'); 
+    res.status(200).send('Pong - Database attivo');
+  } catch (error) {
+    res.status(500).send('Errore di connessione al DB');
+  }
+});
+
 app.use('/api', (req, res) => res.status(404).json({ message: 'Risorsa non trovata' }));
 
 // In produzione Express serve anche il frontend compilato (client/dist)
