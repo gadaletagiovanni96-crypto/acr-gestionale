@@ -111,3 +111,10 @@ td.right { text-align: right; white-space: nowrap; }
 .inline { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; }
 .inline input { flex: 1; min-width: 220px; }
 .notice button { margin-left: .6rem; }
+.login-logo {  
+  width: 80px; /* Adatta la dimensione in base al tuo logo */
+  height: auto;
+  margin-bottom: 16px;
+  border-radius: 12px; /* Opzionale: per ammorbidire i bordi se l'immagine è quadrata */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Leggera ombra per dare profondità */
+}

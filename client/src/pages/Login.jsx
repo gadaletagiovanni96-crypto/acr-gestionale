@@ -18,7 +18,7 @@ export default function Login() {
   return (
     <div className="login">
       <section className="login-side">
-        <div className="mark big" />
+        <img src="/logo.png" alt="Logo ACR" className="login-logo" />
         <h1>ACR Parrocchia Sant'Achille</h1>
         <p>Molfetta · iscrizioni, gruppi e quote dei ragazzi in un posto solo.</p>
       </section>
