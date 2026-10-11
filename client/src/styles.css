@@ -147,7 +147,7 @@ td.right { text-align: right; white-space: nowrap; }
 .menu-btn { display: none; background: transparent; border: 0; padding: .65rem; margin: -.3rem -.5rem -.3rem 0; flex-direction: column; gap: 5px; }
 .menu-btn span { display: block; width: 24px; height: 2px; background: #fff; border-radius: 2px; }
 
-@media (max-width: 1024px) {
+@media (max-width: 1024px), (hover: none) and (pointer: coarse) {
   .top { gap: .5rem; padding: .5rem 1rem; }
   .brand { flex: 1; font-size: 1rem; }
   .menu-btn { display: flex; }
