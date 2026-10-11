@@ -141,3 +141,36 @@ td.right { text-align: right; white-space: nowrap; }
 }
 
 /* (Mantieni anche le regole per .login-logo, h1, p e la media query che ti ho inviato prima) */
+
+.top { position: sticky; top: 0; z-index: 10; }
+.menu { display: flex; align-items: center; gap: 1.5rem; flex: 1; flex-wrap: wrap; }
+.menu-btn { display: none; background: transparent; border: 0; padding: .65rem; margin: -.3rem -.5rem -.3rem 0; flex-direction: column; gap: 5px; }
+.menu-btn span { display: block; width: 24px; height: 2px; background: #fff; border-radius: 2px; }
+
+@media (max-width: 760px) {
+  .top { gap: .5rem; padding: .5rem 1rem; }
+  .brand { flex: 1; font-size: 1rem; }
+  .menu-btn { display: flex; }
+  .menu { display: none; flex-basis: 100%; flex-direction: column; align-items: stretch; gap: .5rem; padding: .25rem 0 .75rem; }
+  .menu.open { display: flex; }
+  .top nav { flex-direction: column; gap: .15rem; }
+  .top nav a { padding: .8rem 1rem; }            /* bersaglio comodo da toccare col pollice */
+  .who { justify-content: space-between; padding: .75rem 1rem 0; border-top: 1px solid var(--ink-2); }
+}
+
+/* ---------- Telefono: resto dell'app ---------- */
+@media (max-width: 640px) {
+  main { padding: 1.1rem .85rem 3rem; }
+  h1 { font-size: 1.45rem; }
+  button, .button { min-height: 44px; }
+  .page-head .actions { width: 100%; }
+  .page-head .actions > * { flex: 1; text-align: center; }
+  .filters select, .filters input, .filters .segmented { width: 100%; }
+  .segmented button { flex: 1; padding: .55rem .4rem; font-size: .9rem; }
+  .group > header { padding: .9rem 1rem .5rem; }
+  .count { text-align: left; min-width: 0; width: 100%; }
+  .group li a { padding: .7rem 1rem; gap: .35rem .6rem; }
+  .group .name { min-width: 0; width: 100%; }
+  .group .chip:last-child { margin-left: 0; }
+  .card { padding: .9rem; }
+}

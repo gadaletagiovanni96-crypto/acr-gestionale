@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, Outlet, NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
 import Login from './pages/Login.jsx';
 import Members from './pages/Members.jsx';
@@ -9,20 +10,29 @@ import Anno from './pages/Anno.jsx';
 
 function Layout() {
   const { user, logout } = useAuth();
+  const [aperto, setAperto] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setAperto(false), [pathname]); // chiude il menu quando si cambia pagina
+
   return (
     <>
       <header className="top">
-        <div className="brand"><img src="/logo.png" alt="Logo" className="nav-logo" />ACR Sant'Achille · Molfetta</div>
-        <nav>
-          <NavLink to="/" end>Ragazzi</NavLink>
-          <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
-          {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
-          {user.ruolo === 'admin' && <NavLink to="/educatori">Account</NavLink>}
-          {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
-        </nav>
-        <div className="who">
-          <span>{user.nome} {user.cognome} <small>({user.ruolo})</small></span>
-          <button className="ghost" onClick={logout}>Esci</button>
+        <div className="brand"><span className="mark" />ACR Sant'Achille · Molfetta</div>
+        <button className="menu-btn" aria-label="Apri il menu" aria-expanded={aperto} aria-controls="menu" onClick={() => setAperto(!aperto)}>
+          <span /><span /><span />
+        </button>
+        <div id="menu" className={`menu${aperto ? ' open' : ''}`}>
+          <nav>
+            <NavLink to="/" end>Ragazzi</NavLink>
+            <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
+            {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
+            {user.ruolo === 'admin' && <NavLink to="/educatori">Account</NavLink>}
+            {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
+          </nav>
+          <div className="who">
+            <span>{user.nome} {user.cognome} <small>({user.ruolo})</small></span>
+            <button className="ghost" onClick={logout}>Esci</button>
+          </div>
         </div>
       </header>
       <main><Outlet /></main>
