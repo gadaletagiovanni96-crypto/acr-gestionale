@@ -210,10 +210,10 @@ export default function MemberForm() {
 
       {id && !f.trasferito && (
         <section className="card" style={{ marginTop: '1rem' }}>
-          <h2>Trasferimento ad altra parrocchia</h2>
+          <h2>Trasferimento ad altra parrocchia / Catechismo</h2>
           <p className="muted">Il ragazzo uscirà dagli elenchi dei gruppi e la sua scheda resterà visibile solo agli amministratori.</p>
           <div className="inline">
-            <input placeholder="Nome della parrocchia (es. San Corrado, Molfetta)" value={trasf} onChange={(e) => setTrasf(e.target.value)} />
+            <input placeholder="Nome della parrocchia (es. Santa Famiglia, Molfetta)" value={trasf} onChange={(e) => setTrasf(e.target.value)} />
             <button type="button" className="danger" disabled={!trasf.trim()} onClick={trasferisci}>Trasferisci</button>
           </div>
         </section>
