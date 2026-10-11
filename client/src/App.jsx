@@ -17,7 +17,7 @@ function Layout() {
   return (
     <>
       <header className="top">
-        <div className="brand"><span className="mark" />ACR Sant'Achille · Molfetta</div>
+        <div className="brand"><img src="/logo.png" alt="Logo" className="nav-logo" />ACR Sant'Achille · Molfetta</div>
         <button className="menu-btn" aria-label="Apri il menu" aria-expanded={aperto} aria-controls="menu" onClick={() => setAperto(!aperto)}>
           <span /><span /><span />
         </button>
