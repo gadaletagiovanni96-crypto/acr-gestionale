@@ -18,6 +18,7 @@ app.use('/api/groups', require('./routes/groups'));
 app.use('/api/members', require('./routes/members'));
 app.use('/api/seasons', require('./routes/seasons'));
 app.use('/api/events', require('./routes/events'));
+app.use('/api/miei-gruppi', require('./routes/mieiGruppi'));
 
 app.get('/api/ping', async (req, res) => {
   try {

@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const { disegnaMarchio } = require('../logo');
 const ExcelJS = require('exceljs');
 const Event = require('../models/Event');
 
@@ -43,9 +44,9 @@ exports.pdf = async (req, res) => {
     if (!prima) doc.addPage();
     prima = false;
     doc.rect(0, 0, W, 58).fill(INK);
-    doc.circle(L + 6, 29, 6).fill('#f2b705');
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", L + 20, 17, { lineBreak: false });
-    doc.font('Helvetica').fontSize(9).text('Molfetta · Contabilità', L + 20, 36, { lineBreak: false });
+    const tx = disegnaMarchio(doc, L);
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
+    doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
     doc.text(oggi, L, 26, { width: TW, align: 'right', lineBreak: false });
   };
 

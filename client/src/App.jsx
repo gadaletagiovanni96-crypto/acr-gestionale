@@ -9,6 +9,7 @@ import Users from './pages/Users.jsx';
 import Anno from './pages/Anno.jsx';
 import Contabilita from './pages/Contabilita.jsx';
 import Evento from './pages/Evento.jsx';
+import MieiGruppi from './pages/MieiGruppi.jsx';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -26,6 +27,7 @@ function Layout() {
         <div id="menu" className={`menu${aperto ? ' open' : ''}`}>
           <nav>
             <NavLink to="/" end>Ragazzi</NavLink>
+            {user.ruolo === 'educatore' && <NavLink to="/miei-gruppi">I miei gruppi</NavLink>}
             <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
             {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
@@ -59,6 +61,7 @@ export default function App() {
         <Route path="/" element={<Members />} />
         <Route path="/iscritti/nuovo" element={<MemberForm />} />
         <Route path="/iscritti/:id" element={<MemberForm />} />
+        <Route path="/miei-gruppi" element={<MieiGruppi />} />
         <Route element={<Private admin />}>
           <Route path="/gruppi" element={<Groups />} />
           <Route path="/educatori" element={<Users />} />

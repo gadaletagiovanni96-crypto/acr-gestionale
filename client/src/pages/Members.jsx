@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, eta, dataIt, euro, labelGruppo, scaricaPdf, scaricaExcel } from '../api';
 import { useAuth } from '../auth.jsx';
+import PannelloFiltri from '../components/PannelloFiltri.jsx';
 
 export default function Members() {
   const { user } = useAuth();
   const admin = user.ruolo === 'admin';
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [filtro, setFiltro] = useState({ iscrizione: '', gruppo: '', q: '' });
+  const [filtro, setFiltro] = useState({ iscrizione: '', fratelli: '', gruppo: '', q: '' });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -28,7 +29,8 @@ export default function Members() {
   const sezioni = useMemo(() => {
     const q = filtro.q.trim().toLowerCase();
     const nomeOk = (m) => !q || `${m.nome} ${m.cognome}`.toLowerCase().includes(q);
-    const ok = (m) => (!filtro.iscrizione || (filtro.iscrizione === 'si') === m.iscritto) && nomeOk(m);
+    const fratelliOk = (m) => !filtro.fratelli || (filtro.fratelli === 'si') === !!m.familyId;
+    const ok = (m) => (!filtro.iscrizione || (filtro.iscrizione === 'si') === m.iscritto) && fratelliOk(m) && nomeOk(m);
     const lista = [...groups.map((g) => ({ id: g._id, nome: g.nome, educatori: g.educatori })), { id: 'nessuno', nome: 'Senza gruppo', educatori: [] }]
       .filter((s) => !filtro.gruppo || filtro.gruppo === s.id)
       .map((s) => {
@@ -36,10 +38,10 @@ export default function Members() {
         return { ...s, tutti, iscritti: tutti.filter((m) => m.iscritto).length, visibili: tutti.filter(ok) };
       })
       .filter((s) => s.id !== 'nessuno' || s.tutti.length)
-      .filter((s) => !(filtro.iscrizione || q) || s.visibili.length);
+      .filter((s) => !(filtro.iscrizione || filtro.fratelli || q) || s.visibili.length);
     if (admin && trasferiti.length && !filtro.iscrizione && (!filtro.gruppo || filtro.gruppo === 'trasferiti')) {
-      const visibili = trasferiti.filter(nomeOk);
-      if (visibili.length || !q) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
+      const visibili = trasferiti.filter((m) => nomeOk(m) && fratelliOk(m));
+      if (visibili.length || !(q || filtro.fratelli)) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
     }
     return lista;
   }, [attivi, trasferiti, groups, filtro, admin]);
@@ -72,10 +74,20 @@ export default function Members() {
         </div>
       </div>
 
-      <div className="filters">
+      <PannelloFiltri
+        badge={[filtro.iscrizione, filtro.fratelli, filtro.gruppo].filter(Boolean).length}
+        onAzzera={filtro.iscrizione || filtro.fratelli || filtro.gruppo || filtro.q
+          ? () => setFiltro({ iscrizione: '', fratelli: '', gruppo: '', q: '' }) : null}
+        ricerca={<input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />}
+      >
         <div className="segmented" role="radiogroup" aria-label="Stato iscrizione">
           {[['', 'Tutti'], ['si', 'Iscritti'], ['no', 'Non ancora iscritti']].map(([v, l]) => (
             <button key={v} className={filtro.iscrizione === v ? 'on' : ''} onClick={() => set('iscrizione')(v)} role="radio" aria-checked={filtro.iscrizione === v}>{l}</button>
+          ))}
+        </div>
+        <div className="segmented" role="radiogroup" aria-label="Fratelli">
+          {[['', 'Tutti'], ['si', 'Con fratelli'], ['no', 'Senza fratelli']].map(([v, l]) => (
+            <button key={v} className={filtro.fratelli === v ? 'on' : ''} onClick={() => set('fratelli')(v)} role="radio" aria-checked={filtro.fratelli === v}>{l}</button>
           ))}
         </div>
         <select value={filtro.gruppo} onChange={(e) => set('gruppo')(e.target.value)} aria-label="Gruppo">
@@ -84,8 +96,7 @@ export default function Members() {
           <option value="nessuno">Senza gruppo</option>
           {admin && <option value="trasferiti">Trasferiti</option>}
         </select>
-        <input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} />
-      </div>
+      </PannelloFiltri>
 
       {err && <p className="error">{err}</p>}
       {loading && <p className="muted">Caricamento…</p>}

@@ -200,3 +200,31 @@ td.right { text-align: right; white-space: nowrap; }
 th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 tr.editing { background: #fff6d6; }
 @media (max-width: 640px) { .totals { grid-template-columns: 1fr; } .flow { grid-template-columns: 3.6rem 1fr auto; } }
+.group .tabella-gruppo { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius); margin-top: 0; }
+.tabella-gruppo table { font-size: .97rem; }
+.tabella-gruppo th { color: var(--ink); background: #eef2f6; font-size: .9rem; white-space: nowrap; }
+.tabella-gruppo tbody tr:nth-child(even) { background: #f7f9fb; }
+.tabella-gruppo td { vertical-align: top; }
+.tabella-gruppo td.nowrap { white-space: nowrap; }
+.tabella-gruppo a { text-decoration-color: #b9c4d0; }
+.sib-line { margin: .1rem 0; }
+.sib-line .chip { margin-left: .25rem; }
+.filtri-box { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
+.filtri-top { order: 2; flex: 1; min-width: 200px; display: flex; gap: .5rem; }
+.filtri-top input { flex: 1; min-width: 0; }
+.filtri-pannello { display: contents; }          /* su schermi larghi i controlli stanno sulla stessa riga */
+.filtri-pannello select { width: auto; }
+.filtri-pannello .azzera { order: 3; }
+.filtri-toggle { display: none; align-items: center; gap: .5rem; white-space: nowrap; }
+.badge { background: var(--sun); color: var(--ink); border-radius: 99px; min-width: 1.4rem; height: 1.4rem; padding: 0 .4rem;
+  display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .filtri-box { display: block; margin-bottom: 1.1rem; }
+  .filtri-top { min-width: 0; }
+  .filtri-toggle { display: inline-flex; }
+  .filtri-pannello { display: none; flex-direction: column; gap: .6rem; margin-top: .6rem; }
+  .filtri-pannello.open { display: flex; }
+  .filtri-pannello .segmented, .filtri-pannello select { width: 100%; }
+  .filtri-pannello .segmented button { flex: 1; }
+}

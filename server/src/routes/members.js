@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const PDFDocument = require('pdfkit');
+const { disegnaMarchio } = require('../logo');
 const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
 const Group = require('../models/Group');
@@ -32,7 +33,7 @@ function pulisci(body) {
 
 // Filtro condiviso da elenco e PDF. Restituisce null se non c'è nulla da mostrare.
 function filtroDa(req) {
-  const { gruppo, iscrizione, q } = req.query;
+  const { gruppo, iscrizione, fratelli, q } = req.query;
   const admin = req.user.ruolo === 'admin';
   const f = {};
   if (!admin) f.trasferito = { $ne: true };
@@ -43,6 +44,8 @@ function filtroDa(req) {
   else if (gruppo) f.gruppo = gruppo;
   if (iscrizione === 'si') f.quotaVersata = { $gt: 0 };
   if (iscrizione === 'no') f.quotaVersata = { $not: { $gt: 0 } };
+  if (fratelli === 'si') f.familyId = { $ne: null };
+  if (fratelli === 'no') f.familyId = null;
   if (q) {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     f.$or = [{ nome: rx }, { cognome: rx }];
@@ -79,6 +82,7 @@ router.get('/pdf', async (req, res) => {
   const euro = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const filtroTesto = [
     req.query.iscrizione === 'si' ? 'solo iscritti' : req.query.iscrizione === 'no' ? 'solo non ancora iscritti' : '',
+    req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : '',
     req.query.q ? `ricerca "${req.query.q}"` : '',
   ].filter(Boolean).join(', ');
 
@@ -99,9 +103,9 @@ router.get('/pdf', async (req, res) => {
 
   const intestazione = () => {
     doc.rect(0, 0, W, 58).fill(INK);
-    doc.circle(L + 6, 29, 6).fill('#f2b705');
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", L + 20, 17, { lineBreak: false });
-    doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', L + 20, 36, { lineBreak: false });
+    const tx = disegnaMarchio(doc, L);
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
+    doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
     doc.text(oggi, L, 26, { width: TW, align: 'right', lineBreak: false });
   };
 
