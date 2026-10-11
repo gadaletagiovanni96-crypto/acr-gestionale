@@ -7,6 +7,8 @@ import MemberForm from './pages/MemberForm.jsx';
 import Groups from './pages/Groups.jsx';
 import Users from './pages/Users.jsx';
 import Anno from './pages/Anno.jsx';
+import Contabilita from './pages/Contabilita.jsx';
+import Evento from './pages/Evento.jsx';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -28,6 +30,7 @@ function Layout() {
             {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
+            {user.ruolo === 'admin' && <NavLink to="/contabilita">Contabilità</NavLink>}
           </nav>
           <div className="who">
             <span>{user.nome} {user.cognome} <small>({user.ruolo})</small></span>
@@ -60,6 +63,8 @@ export default function App() {
           <Route path="/gruppi" element={<Groups />} />
           <Route path="/educatori" element={<Users />} />
           <Route path="/anno" element={<Anno />} />
+          <Route path="/contabilita" element={<Contabilita />} />
+          <Route path="/contabilita/:id" element={<Evento />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -174,3 +174,29 @@ td.right { text-align: right; white-space: nowrap; }
   .group .chip:last-child { margin-left: 0; }
   .card { padding: .9rem; }
 }
+
+.money-in { color: var(--ok); }
+.money-out { color: var(--warn); }
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1.25rem; }
+.tile { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--ok); border-radius: var(--radius); padding: .8rem 1rem; }
+.tile.out { border-left-color: var(--warn); }
+.tile span { display: block; color: var(--muted); font-size: .9rem; }
+.tile strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tile.in strong { color: var(--ok); }
+.tile.out strong { color: var(--warn); }
+.event-card { display: flex; flex-direction: column; gap: .65rem; text-decoration: none; }
+.event-card:hover { border-color: #b9c4d0; box-shadow: 0 2px 10px rgba(23, 50, 77, .08); }
+.event-top { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.flow { display: grid; grid-template-columns: 4.2rem 1fr auto; gap: .6rem; align-items: center; font-size: .92rem; }
+.flow strong { font-variant-numeric: tabular-nums; }
+.track { height: 10px; background: #e6ebf0; border-radius: 5px; overflow: hidden; }
+.track i { display: block; height: 100%; border-radius: 5px; min-width: 2px; }
+.track i.in { background: var(--ok); }
+.track i.out { background: var(--warn); }
+.saldo { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: .55rem; gap: .5rem; }
+.saldo strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.segmented button.on.in { background: var(--ok); border-color: var(--ok); }
+.segmented button.on.out { background: var(--warn); border-color: var(--warn); }
+th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.editing { background: #fff6d6; }
+@media (max-width: 640px) { .totals { grid-template-columns: 1fr; } .flow { grid-template-columns: 3.6rem 1fr auto; } }
