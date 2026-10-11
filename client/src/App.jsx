@@ -26,7 +26,7 @@ function Layout() {
             <NavLink to="/" end>Ragazzi</NavLink>
             <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
             {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/educatori">Account</NavLink>}
+            {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
           </nav>
           <div className="who">

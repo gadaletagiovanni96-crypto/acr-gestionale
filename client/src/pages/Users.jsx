@@ -29,8 +29,8 @@ export default function Users() {
   return (
     <>
       <div className="page-head">
-        <div><h1>Account</h1><p className="muted">Aggiungi, modifica o rimuovi gli account di educatori e amministratori.</p></div>
-        {!edit && <button className="primary" onClick={() => { setErr(''); setEdit({ ...VUOTO }); }}>Nuovo account</button>}
+        <div><h1>Educatori & Account</h1><p className="muted">Aggiungi, modifica o rimuovi gli account di educatori e amministratori.</p></div>
+        {!edit && <button className="primary" onClick={() => { setErr(''); setEdit({ ...VUOTO }); }}>Nuovo Educatore</button>}
       </div>
       {err && <p className="error">{err}</p>}
 
