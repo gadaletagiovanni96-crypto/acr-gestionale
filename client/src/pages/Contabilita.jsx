@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, euro, dataIt } from '../api';
+import { api, euro, dataIt, scarica } from '../api';
 
 const oggi = () => new Date().toISOString().slice(0, 10);
 
@@ -10,6 +10,7 @@ export default function Contabilita() {
   const [form, setForm] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
 
   useEffect(() => {
     api.get('/events').then(setEventi).catch((e) => setErr(e.message)).finally(() => setLoading(false));
@@ -21,6 +22,12 @@ export default function Contabilita() {
   // Le barre sono tutte nella stessa scala, così gli eventi si possono confrontare a colpo d'occhio
   const max = Math.max(1, ...eventi.flatMap((e) => [e.totaleEntrate, e.totaleUscite]));
 
+  const esporta = async (tipo) => {
+    setErr(''); setBusy(tipo);
+    try { await scarica(`/events/${tipo}`, `contabilita.${tipo}`); } catch (x) { setErr(x.message); }
+    setBusy('');
+  };
+
   const crea = async (ev) => {
     ev.preventDefault(); setErr('');
     try { const e = await api.post('/events', form); nav(`/contabilita/${e._id}`); } catch (x) { setErr(x.message); }
@@ -30,7 +37,11 @@ export default function Contabilita() {
     <>
       <div className="page-head">
         <div><h1>Contabilità</h1><p className="muted">Un evento per ogni attività: dentro registri entrate e uscite.</p></div>
-        {!form && <button className="primary" onClick={() => setForm({ nome: '', data: oggi(), note: '' })}>Nuovo evento</button>}
+        <div className="actions" style={{ marginTop: 0 }}>
+          <button className="ghost" onClick={() => esporta('pdf')} disabled={!!busy || !eventi.length}>{busy === 'pdf' ? 'Creo il PDF…' : 'Scarica PDF'}</button>
+          <button className="ghost" onClick={() => esporta('xlsx')} disabled={!!busy || !eventi.length}>{busy === 'xlsx' ? 'Creo il foglio…' : 'Scarica Excel'}</button>
+          {!form && <button className="primary" onClick={() => setForm({ nome: '', data: oggi(), note: '' })}>Nuovo evento</button>}
+        </div>
       </div>
 
       <div className="totals">

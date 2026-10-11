@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Event = require('../models/Event');
 const { auth, soloAdmin } = require('../middleware/auth');
+const { pdf, xlsx } = require('./eventsExport');
 
 router.use(auth, soloAdmin); // la contabilità è riservata agli admin
 
@@ -28,6 +29,9 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   res.status(201).json(await Event.create({ ...prendi(req.body, CAMPI_EVENTO), creatoDa: req.user._id }));
 });
+
+router.get('/pdf', pdf);
+router.get('/xlsx', xlsx);
 
 router.get('/:id', async (req, res) => {
   const e = await trova(req, res);

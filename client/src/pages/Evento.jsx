@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, euro, dataIt } from '../api';
+import { api, euro, dataIt, scarica } from '../api';
 
 const oggi = () => new Date().toISOString().slice(0, 10);
 const giorno = (d) => (d ? String(d).slice(0, 10) : '');
@@ -14,6 +14,7 @@ export default function Evento() {
   const [editId, setEditId] = useState(null);
   const [modEvento, setModEvento] = useState(null);
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState('');
 
   useEffect(() => { api.get(`/events/${id}`).then(setEv).catch((e) => setErr(e.message)); }, [id]);
 
@@ -50,6 +51,11 @@ export default function Evento() {
     e.preventDefault(); setErr('');
     try { setEv(await api.put(`/events/${id}`, modEvento)); setModEvento(null); } catch (x) { setErr(x.message); }
   };
+  const esporta = async (tipo) => {
+    setErr(''); setBusy(tipo);
+    try { await scarica(`/events/${tipo}?evento=${id}`, `contabilita.${tipo}`); } catch (x) { setErr(x.message); }
+    setBusy('');
+  };
   const eliminaEvento = async () => {
     if (!confirm(`Eliminare l'evento «${ev.nome}» con tutti i suoi ${ev.voci.length} movimenti?\n\nNon si può annullare.`)) return;
     try { await api.del(`/events/${id}`); nav('/contabilita'); } catch (x) { setErr(x.message); }
@@ -65,6 +71,8 @@ export default function Evento() {
         <div className="actions" style={{ marginTop: 0 }}>
           <Link className="button ghost" to="/contabilita">Tutti gli eventi</Link>
           <button className="ghost" onClick={() => setModEvento({ nome: ev.nome, data: giorno(ev.data), note: ev.note || '' })}>Modifica evento</button>
+          <button className="ghost" onClick={() => esporta('pdf')} disabled={!!busy}>{busy === 'pdf' ? 'Creo il PDF…' : 'Scarica PDF'}</button>
+          <button className="ghost" onClick={() => esporta('xlsx')} disabled={!!busy}>{busy === 'xlsx' ? 'Creo il foglio…' : 'Scarica Excel'}</button>
         </div>
       </div>
 

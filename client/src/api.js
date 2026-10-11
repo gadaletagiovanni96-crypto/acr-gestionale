@@ -71,3 +71,18 @@ export async function scaricaExcel(filtro) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function scarica(percorso, nomePredefinito) {
+  const res = await fetch('/api' + percorso, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) {
+    const d = await res.json().catch(() => null);
+    throw new Error(d?.message || 'Impossibile creare il file');
+  }
+  const nome = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || nomePredefinito;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
