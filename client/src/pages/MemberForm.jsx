@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, eta, dataIt, euro, labelGruppo } from '../api';
 import { useAuth } from '../auth.jsx';
+import { useImpostazioni } from '../impostazioni';
 
 const VUOTO = {
   nome: '', cognome: '', sesso: '', dataNascita: '', luogoNascita: '', codiceFiscale: '', indirizzo: '', citta: '', cap: '',
@@ -74,6 +75,7 @@ export default function MemberForm() {
   const nav = useNavigate();
   const { state } = useLocation();
   const { user } = useAuth();
+  const imp = useImpostazioni();
   const [f, setF] = useState(VUOTO);
   const [groups, setGroups] = useState([]);
   const [fratelli, setFratelli] = useState([]);
@@ -117,6 +119,16 @@ export default function MemberForm() {
     if (!confirm(`Eliminare definitivamente l'iscrizione di ${f.nome} ${f.cognome}?`)) return;
     try { await api.del(`/members/${id}`); nav('/'); } catch (x) { setErr(x.message); }
   };
+
+  if (!id && user.ruolo !== 'admin') {
+    if (!imp) return <p className="muted">Caricamento…</p>;
+    if (!imp.iscrizioniAperte) return (
+      <>
+        <div className="page-head"><h1>Nuova iscrizione</h1><Link className="button ghost" to="/">Torna all'elenco</Link></div>
+        <p className="notice">Le iscrizioni di nuovi ragazzi sono chiuse al momento. Per iscrivere qualcuno rivolgiti all'amministratore.</p>
+      </>
+    );
+  }
 
   return (
     <>

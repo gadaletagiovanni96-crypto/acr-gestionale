@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { api, eta, dataIt, euro, labelGruppo, scaricaPdf, scaricaExcel } from '../api';
 import { useAuth } from '../auth.jsx';
 import PannelloFiltri from '../components/PannelloFiltri.jsx';
+import { useImpostazioni } from '../impostazioni';
 
 export default function Members() {
   const { user } = useAuth();
   const admin = user.ruolo === 'admin';
+  const imp = useImpostazioni();
+  const iscrizioniChiuse = !admin && imp?.iscrizioniAperte === false;
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [filtro, setFiltro] = useState({ iscrizione: '', fratelli: '', gruppo: '', q: '' });
@@ -70,10 +73,10 @@ export default function Members() {
         <div className="actions" style={{ marginTop: 0 }}>
           <button className="ghost" onClick={pdf} disabled={pdfBusy}>{pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'}</button>
           <button className="ghost" onClick={xls} disabled={xlsBusy}>{xlsBusy ? 'Creo il foglio…' : 'Scarica Excel'}</button>
-          <Link className="button primary" to="/iscritti/nuovo">Nuova iscrizione</Link>
+          {!iscrizioniChiuse && <Link className="button primary" to="/iscritti/nuovo">Nuova iscrizione</Link>}
         </div>
       </div>
-
+      {iscrizioniChiuse && <p className="notice" style={{ marginBottom: '1rem' }}>Le iscrizioni di nuovi ragazzi sono chiuse al momento. Solo il parroco o il responsabile possono aggiungere nuovi iscritti.</p>}
       <PannelloFiltri
         badge={[filtro.iscrizione, filtro.fratelli, filtro.gruppo].filter(Boolean).length}
         onAzzera={filtro.iscrizione || filtro.fratelli || filtro.gruppo || filtro.q

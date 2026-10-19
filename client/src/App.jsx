@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './auth.jsx';
+import { useImpostazioni } from './impostazioni';
 import Login from './pages/Login.jsx';
 import Members from './pages/Members.jsx';
 import MemberForm from './pages/MemberForm.jsx';
@@ -16,6 +17,7 @@ function Layout() {
   const [aperto, setAperto] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => setAperto(false), [pathname]); // chiude il menu quando si cambia pagina
+  const imp = useImpostazioni(pathname);
 
   return (
     <>
@@ -28,7 +30,7 @@ function Layout() {
           <nav>
             <NavLink to="/" end>Ragazzi</NavLink>
             {user.ruolo === 'educatore' && <NavLink to="/miei-gruppi">I miei gruppi</NavLink>}
-            <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>
+            {(user.ruolo === 'admin' || imp?.iscrizioniAperte !== false) && <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}

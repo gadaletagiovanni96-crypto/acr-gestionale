@@ -48,6 +48,62 @@ function Passaggio() {
   );
 }
 
+function Impostazioni() {
+  const [imp, setImp] = useState(null);
+  const [anno, setAnno] = useState('');
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+
+  useEffect(() => {
+    api.get('/settings').then((r) => { setImp(r); setAnno(r.annoAssociativo); }).catch((e) => setErr(e.message));
+  }, []);
+
+  const cambiaIscrizioni = async () => {
+    setErr(''); setOk('');
+    try { setImp(await api.put('/settings', { iscrizioniAperte: !imp.iscrizioniAperte })); } catch (x) { setErr(x.message); }
+  };
+  const salvaAnno = async (e) => {
+    e.preventDefault(); setErr(''); setOk('');
+    try {
+      const r = await api.put('/settings', { annoAssociativo: anno });
+      setImp(r); setAnno(r.annoAssociativo);
+      setOk(r.annoAssociativo ? `Anno associativo impostato: ${r.annoAssociativo}.` : "Anno associativo tolto dall'intestazione dei PDF.");
+    } catch (x) { setErr(x.message); }
+  };
+
+  if (!imp) return err ? <p className="error">{err}</p> : null;
+  return (
+    <>
+      <section className="card stack" style={{ marginBottom: '1.25rem' }}>
+        <h2>Pagina di iscrizione per gli educatori</h2>
+        <p>Stato attuale: <span className={`chip ${imp.iscrizioniAperte ? 'ok' : 'warn'}`}>{imp.iscrizioniAperte ? 'Visibile agli educatori' : 'Nascosta agli educatori'}</span></p>
+        <p className="muted">
+          {imp.iscrizioniAperte
+            ? 'Gli educatori possono registrare nuovi ragazzi. Nascondi la pagina quando le iscrizioni sono chiuse.'
+            : 'Gli educatori non vedono più «Nuova iscrizione» e non possono registrare ragazzi. Tu, come admin, puoi sempre farlo. Mostrala di nuovo quando riaprono le iscrizioni.'}
+        </p>
+        <div className="actions">
+          <button className={imp.iscrizioniAperte ? 'danger' : 'primary'} onClick={cambiaIscrizioni}>
+            {imp.iscrizioniAperte ? 'Nascondi la pagina di iscrizione' : 'Mostra la pagina di iscrizione'}
+          </button>
+        </div>
+      </section>
+
+      <form className="card stack" onSubmit={salvaAnno} style={{ marginBottom: '1.25rem' }}>
+        <h2>Anno associativo</h2>
+        <p className="muted">Compare nell'intestazione di tutti i PDF come «Anno associativo 2026/2027». Lascia vuoto per non mostrarlo.</p>
+        <label>Anno associativo
+          <input value={anno} onChange={(e) => setAnno(e.target.value)} placeholder="es. 2026/2027" inputMode="numeric" maxLength={9} />
+        </label>
+        <div className="actions"><button className="primary">Salva anno associativo</button></div>
+      </form>
+
+      {err && <p className="error" role="alert">{err}</p>}
+      {ok && <p className="success" role="status">{ok}</p>}
+    </>
+  );
+}
+
 export default function Anno() {
   const [dati, setDati] = useState(null);
   const [nome, setNome] = useState('');
@@ -74,7 +130,7 @@ export default function Anno() {
       <div className="page-head">
         <div><h1>Nuovo anno</h1><p className="muted">Archivia le quote dell'anno concluso, poi fai passare i ragazzi al gruppo successivo.</p></div>
       </div>
-
+      
       <form className="card stack" onSubmit={chiudi}>
         <h2>Archivia l'anno e azzera le iscrizioni</h2>
         <div className="stats">
@@ -89,6 +145,8 @@ export default function Anno() {
         {ok && <p className="success" role="status">{ok}</p>}
         <div className="actions"><button className="danger" disabled={!dati.corrente.iscritti}>Archivia l'anno e azzera le iscrizioni</button></div>
       </form>
+
+      <Impostazioni />
 
       <Passaggio />
 

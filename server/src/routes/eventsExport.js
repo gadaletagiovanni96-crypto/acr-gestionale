@@ -1,5 +1,6 @@
 const PDFDocument = require('pdfkit');
-const { disegnaMarchio } = require('../logo');
+const { disegnaMarchio, scriviAnnoEData } = require('../logo');
+const { leggiImpostazioni } = require('../impostazioni');
 const ExcelJS = require('exceljs');
 const Event = require('../models/Event');
 
@@ -29,7 +30,7 @@ function movimenti(ev) {
 exports.pdf = async (req, res) => {
   const eventi = await caricaEventi(req, res);
   if (!eventi) return;
-
+  const { annoAssociativo } = await leggiImpostazioni();
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true, info: { Title: "Contabilità - ACR Parrocchia Sant'Achille, Molfetta" } });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${nomeFile(eventi)}.pdf"`);
@@ -47,7 +48,7 @@ exports.pdf = async (req, res) => {
     const tx = disegnaMarchio(doc, L);
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
     doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
-    doc.text(oggi, L, 26, { width: TW, align: 'right', lineBreak: false });
+    scriviAnnoEData(doc, L, TW, annoAssociativo, oggi);
   };
 
   const altezza = (celle, cols, bold) => {

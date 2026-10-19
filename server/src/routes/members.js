@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const PDFDocument = require('pdfkit');
-const { disegnaMarchio } = require('../logo');
+const { disegnaMarchio, scriviAnnoEData } = require('../logo');
+const { leggiImpostazioni } = require('../impostazioni');
 const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
 const Group = require('../models/Group');
@@ -68,6 +69,8 @@ router.get('/pdf', async (req, res) => {
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
   ]);
 
+  const { annoAssociativo } = await leggiImpostazioni();
+
   const sezioni = [];
   for (const g of groups) {
     const lista = members.filter((m) => !m.trasferito && String(m.gruppo) === String(g._id));
@@ -107,7 +110,7 @@ router.get('/pdf', async (req, res) => {
     const tx = disegnaMarchio(doc, L);
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
     doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
-    doc.text(oggi, L, 26, { width: TW, align: 'right', lineBreak: false });
+    scriviAnnoEData(doc, L, TW, annoAssociativo, oggi); // "Anno associativo ..." e data a destra
   };
 
   // Altezza della riga = quella della cella più alta (il testo lungo va a capo)
@@ -275,9 +278,11 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  // Se l'admin ha chiuso le iscrizioni, gli educatori non possono registrare nuovi ragazzi
+  if (req.user.ruolo !== 'admin' && !(await leggiImpostazioni()).iscrizioniAperte)
+    return res.status(403).json({ message: "Le iscrizioni sono chiuse: al momento solo l'amministratore può registrare nuovi ragazzi." });
   res.status(201).json(await Member.create({ ...pulisci(req.body), creatoDa: req.user._id }));
 });
-
 
 
 

@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const PDFDocument = require('pdfkit');
-const { disegnaMarchio } = require('../logo');
+const { disegnaMarchio, scriviAnnoEData } = require('../logo');
+const { leggiImpostazioni } = require('../impostazioni');
 const ExcelJS = require('exceljs');
 const Group = require('../models/Group');
 const Member = require('../models/Member');
@@ -91,6 +92,7 @@ router.get('/pdf', async (req, res) => {
   const dati = await preparaDati(req, res);
   if (!dati) return;
   const { gruppi, descr } = dati;
+  const { annoAssociativo } = await leggiImpostazioni();
 
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true, info: { Title: "I miei gruppi - ACR Parrocchia Sant'Achille, Molfetta" } });
   res.setHeader('Content-Type', 'application/pdf');
@@ -113,7 +115,7 @@ router.get('/pdf', async (req, res) => {
     const tx = disegnaMarchio(doc, L);
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
     doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
-    doc.text(oggi, L, 26, { width: TW, align: 'right', lineBreak: false });
+    scriviAnnoEData(doc, L, TW, annoAssociativo, oggi);
   };
   const altezza = (celle, bold) => {
     doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(FS);

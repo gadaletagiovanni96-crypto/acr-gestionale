@@ -38,4 +38,15 @@ function disegnaMarchio(doc, x) {
   return x + 20;
 }
 
-module.exports = { disegnaMarchio };
+// Parte destra dell'intestazione: "Anno associativo 2026/2027" (se impostato) e la data di stampa
+function scriviAnnoEData(doc, x, larghezza, anno, data) {
+  doc.fillColor('#ffffff');
+  if (anno) {
+    doc.font('Helvetica-Bold').fontSize(12).text(`Anno associativo ${anno}`, x, 17, { width: larghezza, align: 'right', lineBreak: false });
+    doc.font('Helvetica').fontSize(9).text(data, x, 36, { width: larghezza, align: 'right', lineBreak: false });
+  } else {
+    doc.font('Helvetica').fontSize(9).text(data, x, 26, { width: larghezza, align: 'right', lineBreak: false });
+  }
+}
+
+module.exports = { disegnaMarchio, scriviAnnoEData };
