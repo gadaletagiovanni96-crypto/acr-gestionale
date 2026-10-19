@@ -99,6 +99,7 @@ router.get('/pdf', async (req, res) => {
 
   const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = 9;
   const INK = '#17324d', MUTED = '#5d6c7b';
+  const ROSSO = '#fde4e1';
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze per A4 orizzontale: la somma deve restare 762
   const COLS = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 75 }, { t: 'Nome', w: 66 }, { t: 'Data di nascita', w: 60 },
@@ -127,12 +128,18 @@ router.get('/pdf', async (req, res) => {
   };
 
   for (const g of gruppi) {
+    const legenda = () => {
+      const ly = doc.y + 6;
+      doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
+      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non ancora iscritto', L + 16, ly + 1, { lineBreak: false });
+    };
     const inizia = (seguito) => {
       nuovaPagina();
       doc.fillColor(INK).font('Helvetica-Bold').fontSize(18).text(g.nome + (seguito ? ' (segue)' : ''), L, 76, { width: TW });
       doc.font('Helvetica').fontSize(11).fillColor(MUTED);
       doc.text('Educatori: ' + (g.educatori.join(', ') || 'nessuno'), L, doc.y + 2, { width: TW });
       doc.text(`${g.ragazzi.length} ragazz${g.ragazzi.length === 1 ? 'o' : 'i'}${descr ? ' · Filtri: ' + descr : ''}`, L, doc.y + 1, { width: TW });
+      legenda();
       const y = doc.y + 10;
       const testa = COLS.map((c) => c.t);
       const rh = altezza(testa, true);
@@ -145,7 +152,7 @@ router.get('/pdf', async (req, res) => {
         statoIscrizione(r), r.fratelli.length ? testoFratelli(r, '\n') : '—'];
       const rh = altezza(celle, false);
       if (y + rh > H - 50) y = inizia(true);
-      riga(celle, y, rh, false, i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
+      riga(celle, y, rh, false, !r.iscritto ? ROSSO : i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
       y += rh;
     });
     if (!g.ragazzi.length) doc.fillColor(MUTED).font('Helvetica').fontSize(11).text('Nessun ragazzo in questo gruppo.', L, y + 10);

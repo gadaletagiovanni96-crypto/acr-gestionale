@@ -93,6 +93,7 @@ router.get('/pdf', async (req, res) => {
 
   const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = 10;
   const INK = '#17324d', MUTED = '#5d6c7b';
+  const ROSSO = '#fde4e1';
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze pensate per A4 orizzontale (762 pt utili): nessun testo viene troncato, va a capo
   const COL_N = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 115 }, { t: 'Nome', w: 105 }, { t: 'Data di nascita', w: 78 },
@@ -123,6 +124,12 @@ router.get('/pdf', async (req, res) => {
     doc.moveTo(L, y + rh).lineTo(L + TW, y + rh).lineWidth(0.5).strokeColor('#dbe1e8').stroke();
   };
 
+  const legenda = () => {
+    const ly = doc.y + 6;
+    doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
+    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non ancora iscritto', L + 16, ly + 1, { lineBreak: false });
+  };
+
   const iniziaPagina = (s, seguito) => {
     if (!prima) doc.addPage();
     prima = false;
@@ -133,6 +140,7 @@ router.get('/pdf', async (req, res) => {
     const n = s.lista.length;
     const iscritti = s.lista.filter((m) => m.quotaVersata > 0).length;
     doc.text([`${n} ragazz${n === 1 ? 'o' : 'i'}`, s.trasferiti ? '' : `${iscritti} iscritt${iscritti === 1 ? 'o' : 'i'}`, filtroTesto].filter(Boolean).join(' · '), L, doc.y + 1, { width: TW });
+    if (!s.trasferiti) legenda();
     const y = doc.y + 10;
     const cols = s.trasferiti ? COL_T : COL_N;
     const testa = cols.map((c) => c.t);
@@ -150,7 +158,8 @@ router.get('/pdf', async (req, res) => {
       if (s.trasferiti) celle.push(`${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + dataIt(m.dataTrasferimento) + ')' : ''}`);
       const rh = altezza(celle, cols, false);
       if (y + rh > H - 50) y = iniziaPagina(s, true);
-      riga(celle, cols, y, rh, false, i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
+      const nonIscritto = !s.trasferiti && !(m.quotaVersata > 0);
+      riga(celle, cols, y, rh, false, nonIscritto ? ROSSO : i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
       y += rh;
     });
   }
