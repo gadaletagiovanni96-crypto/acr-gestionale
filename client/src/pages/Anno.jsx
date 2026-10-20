@@ -28,6 +28,15 @@ function Passaggio() {
     <section className="card stack" style={{ marginTop: '2rem' }}>
       <h2>Passaggio di gruppo</h2>
       <p>Per ogni gruppo scegli dove vanno tutti i suoi ragazzi. Puoi impostare più passaggi insieme (per esempio II → III e III → IV): vengono calcolati sulla situazione attuale, quindi non si sovrappongono. I ragazzi trasferiti in altre parrocchie non vengono toccati.</p>
+      <p>Se trovi difficile fare il passaggio tra i gruppi perchè temi di perdere dati, segui questi passaggi in sequenza:</p>
+      <ol>
+        <li>Scarica l'excel e il pdf di tutti gli elenchi e tienili in un posto sicuro</li>
+        <li>Sposta solo i gruppi di III media nel gruppo "Passaggio giovanissimi"</li>
+        <li>Clicca su "Applica passaggi"</li>
+        <li>A questo punto vai nella sezione gruppi ed elimina i gruppi di terza media</li>
+        <li>Cambia il nome degli altri gruppi, cliccando sul pulsante modifica, all'anno corrente a partire dalla seconda media (es.: II media 1 → III media 1, I media 1 → II media 1, etc...)</li>
+        <li>Solo al termine abbina gli educatori ai gruppi</li>
+      </ol>
       {!groups.length && <p className="muted">Non ci sono ancora gruppi.</p>}
       <div>
         {groups.map((g) => (
