@@ -5,6 +5,12 @@ import { useAuth } from '../auth.jsx';
 import PannelloFiltri from '../components/PannelloFiltri.jsx';
 import { useImpostazioni } from '../impostazioni';
 
+const CHIAVE_FILTRI = 'acr_filtri_ragazzi';
+const FILTRI_VUOTI = { iscrizione: '', fratelli: '', gruppo: '', q: '' };
+const filtriSalvati = () => {
+  try { return { ...FILTRI_VUOTI, ...JSON.parse(sessionStorage.getItem(CHIAVE_FILTRI)) }; } catch { return FILTRI_VUOTI; }
+};
+
 export default function Members() {
   const { user } = useAuth();
   const admin = user.ruolo === 'admin';
@@ -12,15 +18,23 @@ export default function Members() {
   const iscrizioniChiuse = !admin && imp?.iscrizioniAperte === false;
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [filtro, setFiltro] = useState({ iscrizione: '', fratelli: '', gruppo: '', q: '' });
+  const [filtro, setFiltro] = useState(filtriSalvati);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [xlsBusy, setXlsBusy] = useState(false);
 
   useEffect(() => {
+    try { sessionStorage.setItem(CHIAVE_FILTRI, JSON.stringify(filtro)); } catch { /* browser senza memoria: i filtri non vengono ricordati */ }
+  }, [filtro]);
+
+  useEffect(() => {
     Promise.all([api.get('/members'), api.get('/groups')])
-      .then(([m, g]) => { setMembers(m); setGroups(g); })
+      .then(([m, g]) => {
+        setMembers(m); setGroups(g);
+        // se il gruppo salvato nel filtro non esiste più (es. eliminato), toglie solo quel filtro
+        setFiltro((f) => (f.gruppo && !['nessuno', 'trasferiti'].includes(f.gruppo) && !g.some((x) => x._id === f.gruppo) ? { ...f, gruppo: '' } : f));
+      })
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
   }, []);

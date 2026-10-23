@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('acr_token', r.token);
     setUser(r.user);
   };
-  const logout = () => { localStorage.removeItem('acr_token'); setUser(null); };
+  const logout = () => { localStorage.removeItem('acr_token'); sessionStorage.removeItem('acr_filtri_ragazzi'); setUser(null); };
 
   if (loading) return <p className="boot">Caricamento…</p>;
   return <Ctx.Provider value={{ user, login, logout }}>{children}</Ctx.Provider>;
