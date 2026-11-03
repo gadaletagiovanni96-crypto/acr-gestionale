@@ -40,9 +40,9 @@ export const labelGruppo = (g) => {
 };
 
 // Scarica il PDF degli elenchi con gli stessi filtri della pagina
-export async function scaricaPdf(filtro) {
+export async function scaricaPdf(filtro, extra = {}) {
   const p = new URLSearchParams();
-  Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
+  Object.entries({ ...filtro, ...extra }).forEach(([k, v]) => v && p.set(k, v));
   const res = await fetch('/api/members/pdf?' + p, { headers: { Authorization: `Bearer ${getToken()}` } });
   if (!res.ok) {
     const d = await res.json().catch(() => null);
@@ -51,7 +51,7 @@ export async function scaricaPdf(filtro) {
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'elenco-ragazzi-acr-sant-achille.pdf';
+  a.download = extra.conFratelli ? 'elenco-ragazzi-acr-sant-achille-con-fratelli.pdf' : 'elenco-ragazzi-acr-sant-achille.pdf';
   a.click();
   URL.revokeObjectURL(url);
 }

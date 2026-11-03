@@ -4,6 +4,7 @@ import { api, eta, dataIt, euro, labelGruppo, scaricaPdf, scaricaExcel } from '.
 import { useAuth } from '../auth.jsx';
 import PannelloFiltri from '../components/PannelloFiltri.jsx';
 import { useImpostazioni } from '../impostazioni';
+import MenuTendina from '../components/MenuTendina.jsx';
 
 const CHIAVE_FILTRI = 'acr_filtri_ragazzi';
 const FILTRI_VUOTI = { iscrizione: '', fratelli: '', gruppo: '', q: '' };
@@ -65,9 +66,9 @@ export default function Members() {
 
   const totIscritti = attivi.filter((m) => m.iscritto).length;
 
-  const pdf = async () => {
+  const pdf = async (conFratelli) => {
     setErr(''); setPdfBusy(true);
-    try { await scaricaPdf(filtro); } catch (e) { setErr(e.message); }
+    try { await scaricaPdf(filtro, conFratelli === true ? { conFratelli: '1' } : {}); } catch (e) { setErr(e.message); }
     setPdfBusy(false);
   };
 
@@ -85,7 +86,12 @@ export default function Members() {
           <p className="muted">{attivi.length} registrati · {totIscritti} con iscrizione completata · {attivi.length - totIscritti} ancora da completare</p>
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
-          <button className="ghost" onClick={pdf} disabled={pdfBusy}>{pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'}</button>
+          {admin ? (
+            <MenuTendina etichetta={pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'} disabilitato={pdfBusy}
+              voci={[{ etichetta: 'PDF senza fratelli', azione: () => pdf(false) }, { etichetta: 'PDF con fratelli', azione: () => pdf(true) }]} />
+          ) : (
+            <button className="ghost" onClick={pdf} disabled={pdfBusy}>{pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'}</button>
+          )}
           <button className="ghost" onClick={xls} disabled={xlsBusy}>{xlsBusy ? 'Creo il foglio…' : 'Scarica Excel'}</button>
           {!iscrizioniChiuse && <Link className="button primary" to="/iscritti/nuovo">Nuova iscrizione</Link>}
         </div>

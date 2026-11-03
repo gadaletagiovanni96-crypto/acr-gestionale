@@ -60,14 +60,28 @@ router.get('/', async (req, res) => {
   res.json(await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 }));
 });
 
+async function aggiungiFratelli(members) {
+  const famiglie = [...new Set(members.map((m) => m.familyId).filter(Boolean).map(String))];
+  const parenti = famiglie.length
+    ? await Member.find({ familyId: { $in: famiglie } }).populate('gruppo', 'nome').select('nome cognome familyId gruppo trasferito')
+    : [];
+  const perFamiglia = {};
+  for (const p of parenti) (perFamiglia[String(p.familyId)] ||= []).push(p);
+  return (m) => (m.familyId ? perFamiglia[String(m.familyId)] || [] : [])
+    .filter((p) => String(p._id) !== String(m._id))
+    .map((p) => `${p.nome} ${p.cognome} (${p.trasferito ? 'Trasferito' : p.gruppo?.nome || 'Senza gruppo'})`);
+}
+
 // ---------- PDF degli elenchi (un gruppo per pagina) ----------
 router.get('/pdf', async (req, res) => {
   const admin = req.user.ruolo === 'admin';
+  const conFratelli = admin && req.query.conFratelli === '1';
   const f = filtroDa(req);
   const [members, groups] = await Promise.all([
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
   ]);
+  const fratelliDi = conFratelli ? await aggiungiFratelli(members) : null;
 
   const { annoAssociativo } = await leggiImpostazioni();
 
@@ -91,18 +105,23 @@ router.get('/pdf', async (req, res) => {
 
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true, info: { Title: "Elenco ragazzi - ACR Parrocchia Sant'Achille, Molfetta" } });
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename="elenco-ragazzi-acr-sant-achille.pdf"');
+  res.setHeader('Content-Disposition', `attachment; filename="elenco-ragazzi-acr-sant-achille${conFratelli ? '-con-fratelli' : ''}.pdf"`);
   doc.pipe(res);
 
-  const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = 10;
+  const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = conFratelli ? 9 : 10;
   const INK = '#17324d', MUTED = '#5d6c7b';
   const ROSSO = '#fde4e1';
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze pensate per A4 orizzontale (762 pt utili): nessun testo viene troncato, va a capo
-  const COL_N = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 115 }, { t: 'Nome', w: 105 }, { t: 'Data di nascita', w: 78 },
+  let COL_N = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 115 }, { t: 'Nome', w: 105 }, { t: 'Data di nascita', w: 78 },
     { t: 'Luogo di nascita', w: 124 }, { t: 'Via', w: 200 }, { t: 'Telefono genitore', w: 116 }];
-  const COL_T = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 105 }, { t: 'Nome', w: 95 }, { t: 'Data di nascita', w: 78 },
+  let COL_T = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 105 }, { t: 'Nome', w: 95 }, { t: 'Data di nascita', w: 78 },
     { t: 'Luogo di nascita', w: 110 }, { t: 'Via', w: 120 }, { t: 'Telefono genitore', w: 100 }, { t: 'Trasferito a', w: 130 }];
+  if (conFratelli) { // con la colonna dei fratelli le altre si restringono (la somma resta 762)
+    COL_N = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 80 }, { t: 'Nome', w: 70 }, { t: 'Data di nascita', w: 62 },
+      { t: 'Luogo di nascita', w: 82 }, { t: 'Via', w: 120 }, { t: 'Telefono genitore', w: 82 }, { t: 'Fratelli', w: 244 }];
+    COL_T = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 72 }, { t: 'Nome', w: 62 }, { t: 'Data di nascita', w: 60 },
+      { t: 'Luogo di nascita', w: 74 }, { t: 'Via', w: 100 }, { t: 'Telefono genitore', w: 76 }, { t: 'Trasferito a', w: 96 }, { t: 'Fratelli', w: 200 }];}
   let prima = true;
 
   const intestazione = () => {
@@ -159,6 +178,7 @@ router.get('/pdf', async (req, res) => {
       const celle = [i + 1, m.cognome, m.nome, dataIt(m.dataNascita), m.luogoNascita || '—',
         [m.indirizzo, m.citta].filter(Boolean).join(', ') || '—', m.telefonoGenitore || '—'];
       if (s.trasferiti) celle.push(`${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + dataIt(m.dataTrasferimento) + ')' : ''}`);
+      if (conFratelli) celle.push(fratelliDi(m).join('\n') || '—');
       const rh = altezza(celle, cols, false);
       if (y + rh > H - 50) y = iniziaPagina(s, true);
       const nonIscritto = !s.trasferiti && !(m.quotaVersata > 0);
@@ -188,6 +208,7 @@ router.get('/xlsx', async (req, res) => {
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
   ]);
+  const fratelliDi = admin ? await aggiungiFratelli(members) : null;
 
   const sezioni = [];
   for (const g of groups) {
@@ -228,6 +249,7 @@ router.get('/xlsx', async (req, res) => {
       { k: 'stato', t: 'Iscrizione', w: 15 }, { k: 'quota', t: 'Quota versata', w: 14 }, { k: 'dataV', t: 'Data versamento', w: 16 },
     ];
     if (s.trasferiti) cols.push({ k: 'trasf', t: 'Trasferito a', w: 28 });
+    if (admin) cols.push({ k: 'fratelli', t: 'Fratelli (nome, cognome e gruppo)', w: 52 });
 
     const ws = wb.addWorksheet(nomeFoglio(s.titolo));
     ws.columns = cols.map((c) => ({ key: c.k, width: c.w }));
@@ -242,12 +264,14 @@ router.get('/xlsx', async (req, res) => {
 
     s.lista.forEach((m, i) => {
       const pagato = m.quotaVersata > 0;
-      ws.addRow({
+      const fila = ws.addRow({
         n: i + 1, cognome: m.cognome, nome: m.nome, nascita: m.dataNascita, luogo: m.luogoNascita,
         via: m.indirizzo, citta: m.citta, genitore: m.nomeGenitore, tel: m.telefonoGenitore,
         stato: pagato ? 'Iscritto' : 'Da completare', quota: pagato ? m.quotaVersata : null, dataV: pagato ? m.dataVersamento : null,
         trasf: s.trasferiti ? `${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + new Date(m.dataTrasferimento).toLocaleDateString('it-IT') + ')' : ''}` : undefined,
+        fratelli: admin ? fratelliDi(m).join('; ') : undefined,
       });
+      if (admin) fila.getCell(cols.length).alignment = { wrapText: true, vertical: 'top' }; // la colonna dei fratelli è l'ultima
     });
     ws.getColumn('nascita').numFmt = 'dd/mm/yyyy';
     ws.getColumn('dataV').numFmt = 'dd/mm/yyyy';

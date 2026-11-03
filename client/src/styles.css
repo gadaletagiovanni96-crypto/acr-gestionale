@@ -228,3 +228,15 @@ tr.editing { background: #fff6d6; }
   .filtri-pannello .segmented, .filtri-pannello select { width: 100%; }
   .filtri-pannello .segmented button { flex: 1; }
 }
+
+/* ---------- Pulsante con menu a tendina ---------- */
+.menu-tendina { position: relative; display: inline-block; }
+.menu-lista { position: absolute; right: 0; top: calc(100% + 4px); min-width: 13rem; z-index: 20; display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .25rem; box-shadow: 0 6px 18px rgba(23, 50, 77, .14); }
+.menu-lista button { border: 0; background: transparent; text-align: left; padding: .65rem .8rem; border-radius: 6px; white-space: nowrap; }
+.menu-lista button:hover { background: #eef2f6; }
+@media (max-width: 640px) {
+  .menu-tendina { flex: 1; }
+  .menu-tendina > button { width: 100%; }
+  .menu-lista { left: 0; right: 0; }
+}
