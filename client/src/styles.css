@@ -78,6 +78,7 @@ label.check input { width: auto; }
 .chip.ok { background: var(--ok-bg); color: var(--ok); }
 .chip.warn { background: var(--warn-bg); color: var(--warn); }
 .chip.sib { background: var(--sib-bg); color: var(--sib); }
+.chip.no { background: #e3e6ea; color: #4b5563; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.2rem; margin: 0; }
 .stack { display: flex; flex-direction: column; gap: 1rem; }

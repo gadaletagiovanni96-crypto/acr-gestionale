@@ -7,10 +7,17 @@ import { useImpostazioni } from '../impostazioni';
 import MenuTendina from '../components/MenuTendina.jsx';
 
 const CHIAVE_FILTRI = 'acr_filtri_ragazzi';
-const FILTRI_VUOTI = { iscrizione: '', fratelli: '', gruppo: '', q: '' };
+const FILTRI_VUOTI = { iscrizione: '', tesserato: '', fratelli: '', gruppo: '', q: '' };
+const STATI = ['', 'si', 'dacompletare', 'noniscritti'];
 const filtriSalvati = () => {
-  try { return { ...FILTRI_VUOTI, ...JSON.parse(sessionStorage.getItem(CHIAVE_FILTRI)) }; } catch { return FILTRI_VUOTI; }
+  try {
+    const f = { ...FILTRI_VUOTI, ...JSON.parse(sessionStorage.getItem(CHIAVE_FILTRI)) };
+    if (!STATI.includes(f.iscrizione)) f.iscrizione = ''; // valori delle versioni precedenti
+    return f;
+  } catch { return FILTRI_VUOTI; }
 };
+// Iscritto (ha versato la quota) · Da completare (la verserà) · Non iscritto (non vuole iscriversi)
+const statoDi = (m) => (m.iscritto ? 'si' : m.nonIscritto ? 'noniscritti' : 'dacompletare');
 
 export default function Members() {
   const { user } = useAuth();
@@ -48,8 +55,9 @@ export default function Members() {
     const q = filtro.q.trim().toLowerCase();
     const nomeOk = (m) => !q || `${m.nome} ${m.cognome}`.toLowerCase().includes(q);
     const fratelliOk = (m) => !filtro.fratelli || (filtro.fratelli === 'si') === !!m.familyId;
-    const statoOk = (m) => !filtro.iscrizione || (filtro.iscrizione === 'nontess' ? !m.tesserato : (filtro.iscrizione === 'si') === m.iscritto);
-    const ok = (m) => statoOk(m) && fratelliOk(m) && nomeOk(m);
+    const statoOk = (m) => !filtro.iscrizione || filtro.iscrizione === statoDi(m);
+    const tesseraOk = (m) => !admin || !filtro.tesserato || (filtro.tesserato === 'si') === !!m.tesserato;
+    const ok = (m) => statoOk(m) && tesseraOk(m) && fratelliOk(m) && nomeOk(m);
     const lista = [...groups.map((g) => ({ id: g._id, nome: g.nome, educatori: g.educatori })), { id: 'nessuno', nome: 'Senza gruppo', educatori: [] }]
       .filter((s) => !filtro.gruppo || filtro.gruppo === s.id)
       .map((s) => {
@@ -57,8 +65,8 @@ export default function Members() {
         return { ...s, tutti, iscritti: tutti.filter((m) => m.iscritto).length, visibili: tutti.filter(ok) };
       })
       .filter((s) => s.id !== 'nessuno' || s.tutti.length)
-      .filter((s) => !(filtro.iscrizione || filtro.fratelli || q) || s.visibili.length);
-    if (admin && trasferiti.length && !filtro.iscrizione && (!filtro.gruppo || filtro.gruppo === 'trasferiti')) {
+      .filter((s) => !(filtro.iscrizione || filtro.tesserato || filtro.fratelli || q) || s.visibili.length);
+    if (admin && trasferiti.length && !filtro.iscrizione && !filtro.tesserato && (!filtro.gruppo || filtro.gruppo === 'trasferiti')) {
       const visibili = trasferiti.filter((m) => nomeOk(m) && fratelliOk(m));
       if (visibili.length || !(q || filtro.fratelli)) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
     }
@@ -66,6 +74,7 @@ export default function Members() {
   }, [attivi, trasferiti, groups, filtro, admin]);
 
   const totIscritti = attivi.filter((m) => m.iscritto).length;
+  const totNonIscritti = attivi.filter((m) => statoDi(m) === 'noniscritti').length;
 
   const pdf = async (conFratelli) => {
     setErr(''); setPdfBusy(true);
@@ -84,7 +93,7 @@ export default function Members() {
       <div className="page-head">
         <div>
           <h1>Ragazzi</h1>
-          <p className="muted">{attivi.length} registrati · {totIscritti} con iscrizione completata · {attivi.length - totIscritti} ancora da completare</p>
+          <p className="muted">{attivi.length} registrati · {totIscritti} iscritti · {attivi.length - totIscritti - totNonIscritti} da completare · {totNonIscritti} non iscritti</p>
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
           {admin ? (
@@ -99,16 +108,23 @@ export default function Members() {
       </div>
       {iscrizioniChiuse && <p className="notice" style={{ marginBottom: '1rem' }}>Le iscrizioni di nuovi ragazzi sono chiuse al momento. Solo il parroco o il responsabile possono aggiungere nuovi iscritti.</p>}
       <PannelloFiltri
-        badge={[filtro.iscrizione, filtro.fratelli, filtro.gruppo].filter(Boolean).length}
-        onAzzera={filtro.iscrizione || filtro.fratelli || filtro.gruppo || filtro.q
-          ? () => setFiltro({ iscrizione: '', fratelli: '', gruppo: '', q: '' }) : null}
+        badge={[filtro.iscrizione, filtro.tesserato, filtro.fratelli, filtro.gruppo].filter(Boolean).length}
+        onAzzera={filtro.iscrizione || filtro.tesserato || filtro.fratelli || filtro.gruppo || filtro.q
+          ? () => setFiltro(FILTRI_VUOTI) : null}
         ricerca={<input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />}
       >
         <div className="segmented" role="radiogroup" aria-label="Stato iscrizione">
-          {[['', 'Tutti'], ['si', 'Iscritti'], ['no', 'Non ancora iscritti'], ...(admin ? [['nontess', 'Non tesserati']] : [])].map(([v, l]) => (
+          {[['', 'Tutti'], ['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']].map(([v, l]) => (
             <button key={v} className={filtro.iscrizione === v ? 'on' : ''} onClick={() => set('iscrizione')(v)} role="radio" aria-checked={filtro.iscrizione === v}>{l}</button>
           ))}
         </div>
+        {admin && (
+          <div className="segmented" role="radiogroup" aria-label="Tesseramento">
+            {[['', 'Tutti'], ['si', 'Tesserati'], ['no', 'Non tesserati']].map(([v, l]) => (
+              <button key={v} className={filtro.tesserato === v ? 'on' : ''} onClick={() => set('tesserato')(v)} role="radio" aria-checked={filtro.tesserato === v}>{l}</button>
+            ))}
+          </div>
+        )}
         <div className="segmented" role="radiogroup" aria-label="Fratelli">
           {[['', 'Tutti'], ['si', 'Con fratelli'], ['no', 'Senza fratelli']].map(([v, l]) => (
             <button key={v} className={filtro.fratelli === v ? 'on' : ''} onClick={() => set('fratelli')(v)} role="radio" aria-checked={filtro.fratelli === v}>{l}</button>
@@ -162,8 +178,8 @@ export default function Members() {
                       {tr ? (
                         <span className="chip sib">{m.parrocchiaTrasferimento} · {dataIt(m.dataTrasferimento)}</span>
                       ) : (
-                        <span className={`chip ${m.iscritto ? 'ok' : 'warn'}`}>
-                          {m.iscritto ? `Iscritto · ${euro(m.quotaVersata)} il ${dataIt(m.dataVersamento)}` : 'Da completare'}
+                        <span className={`chip ${m.iscritto ? 'ok' : m.nonIscritto ? 'no' : 'warn'}`}>
+                          {m.iscritto ? `Iscritto · ${euro(m.quotaVersata)} il ${dataIt(m.dataVersamento)}` : m.nonIscritto ? 'Non iscritto' : 'Da completare'}
                         </span>
                       )}
                     </Link>

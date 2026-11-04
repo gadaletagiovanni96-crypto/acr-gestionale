@@ -5,6 +5,7 @@ const { leggiImpostazioni } = require('../impostazioni');
 const ExcelJS = require('exceljs');
 const Group = require('../models/Group');
 const Member = require('../models/Member');
+const { statoIscrizione } = Member;
 const { auth } = require('../middleware/auth');
 
 // Sezione riservata agli educatori (l'admin non la usa)
@@ -14,7 +15,6 @@ router.use(auth, (req, res, next) =>
 const dataIt = (d) => (d ? new Date(d).toLocaleDateString('it-IT') : '');
 const via = (r) => [r.indirizzo, r.citta].filter(Boolean).join(', ');
 const testoFratelli = (r, sep) => r.fratelli.map((f) => `${f.nome} ${f.cognome} (${f.gruppo})`).join(sep);
-const statoIscrizione = (r) => (r.iscritto ? 'Iscritto' : 'Da completare');
 
 // I gruppi di cui l'educatore è responsabile, con i loro ragazzi e gli eventuali fratelli
 async function caricaGruppi(user) {
@@ -35,6 +35,7 @@ async function caricaGruppi(user) {
         _id: r._id, nome: r.nome, cognome: r.cognome, dataNascita: r.dataNascita, luogoNascita: r.luogoNascita,
         indirizzo: r.indirizzo, citta: r.citta, telefonoGenitore: r.telefonoGenitore,
         iscritto: r.quotaVersata > 0,
+        stato: statoIscrizione(r), // Iscritto | Da completare | Non iscritto
         fratelli: r.familyId
           ? parenti
               .filter((p) => String(p.familyId) === String(r.familyId) && String(p._id) !== String(r._id))
@@ -44,10 +45,11 @@ async function caricaGruppi(user) {
   }));
 }
 
-// ---------- Filtri: ?iscrizione=si|no  &fratelli=si|no  &q=testo ----------
+// ---------- Filtri: ?iscrizione=si|dacompletare|noniscritti  &fratelli=si|no  &q=testo ----------
 const minuscolo = (s) => String(s || '').toLowerCase();
 const siNo = (v) => (v === 'si' || v === 'no' ? v : '');
-const filtriDa = (query) => ({ iscrizione: siNo(query.iscrizione), fratelli: siNo(query.fratelli), q: String(query.q || '').trim().slice(0, 100) });
+const STATI = { si: 'Iscritto', dacompletare: 'Da completare', noniscritti: 'Non iscritto' };
+const filtriDa = (query) => ({ iscrizione: STATI[query.iscrizione] ? query.iscrizione : '', fratelli: siNo(query.fratelli), q: String(query.q || '').trim().slice(0, 100) });
 const filtriAttivi = (f) => !!(f.iscrizione || f.fratelli || f.q);
 
 // Testo in cui cerca la casella "Cerca": nome, cognome, luogo, via, telefono e nomi dei fratelli
@@ -57,8 +59,7 @@ const testoRicerca = (r) => minuscolo([r.cognome, r.nome, `${r.nome} ${r.cognome
 function filtra(gruppi, f) {
   const parole = minuscolo(f.q).split(/\s+/).filter(Boolean); // devono comparire tutte
   const ok = (r) => {
-    if (f.iscrizione === 'si' && !r.iscritto) return false;
-    if (f.iscrizione === 'no' && r.iscritto) return false;
+    if (f.iscrizione && r.stato !== STATI[f.iscrizione]) return false;
     if (f.fratelli === 'si' && !r.fratelli.length) return false;
     if (f.fratelli === 'no' && r.fratelli.length) return false;
     if (parole.length) { const t = testoRicerca(r); if (!parole.every((p) => t.includes(p))) return false; }
@@ -68,7 +69,7 @@ function filtra(gruppi, f) {
 }
 
 const descrizioneFiltri = (f) => [
-  f.iscrizione === 'si' ? 'solo iscritti' : f.iscrizione === 'no' ? 'solo non ancora iscritti' : '',
+  ({ si: 'solo iscritti', dacompletare: 'solo da completare', noniscritti: 'solo non iscritti' })[f.iscrizione] || '',
   f.fratelli === 'si' ? 'con fratelli' : f.fratelli === 'no' ? 'senza fratelli' : '',
   f.q ? `ricerca "${f.q}"` : '',
 ].filter(Boolean).join(', ');
@@ -101,7 +102,8 @@ router.get('/pdf', async (req, res) => {
 
   const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = 9;
   const INK = '#17324d', MUTED = '#5d6c7b';
-  const ROSSO = '#fde4e1';
+  const ROSSO = '#fde4e1'; // da completare
+  const GRIGIO = '#e3e6ea'; // non iscritto
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze per A4 orizzontale: la somma deve restare 762
   const COLS = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 75 }, { t: 'Nome', w: 66 }, { t: 'Data di nascita', w: 60 },
@@ -133,7 +135,9 @@ router.get('/pdf', async (req, res) => {
     const legenda = () => {
       const ly = doc.y + 6;
       doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
-      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non ancora iscritto', L + 16, ly + 1, { lineBreak: false });
+      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Da completare', L + 16, ly + 1, { lineBreak: false });
+      doc.rect(L + 110, ly, 10, 10).lineWidth(0.5).fillAndStroke(GRIGIO, '#b8bec6');
+      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non iscritto', L + 126, ly + 1, { lineBreak: false });
     };
     const inizia = (seguito) => {
       nuovaPagina();
@@ -151,10 +155,11 @@ router.get('/pdf', async (req, res) => {
     let y = inizia(false);
     g.ragazzi.forEach((r, i) => {
       const celle = [i + 1, r.cognome, r.nome, dataIt(r.dataNascita), r.luogoNascita || '—', via(r) || '—', r.telefonoGenitore || '—',
-        statoIscrizione(r), r.fratelli.length ? testoFratelli(r, '\n') : '—'];
+        r.stato, r.fratelli.length ? testoFratelli(r, '\n') : '—'];
       const rh = altezza(celle, false);
       if (y + rh > H - 50) y = inizia(true);
-      riga(celle, y, rh, false, !r.iscritto ? ROSSO : i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
+      const sfondo = r.stato === 'Da completare' ? ROSSO : r.stato === 'Non iscritto' ? GRIGIO : i % 2 === 0 ? '#f1f5f9' : null;
+      riga(celle, y, rh, false, sfondo, '#1b2733');
       y += rh;
     });
     if (!g.ragazzi.length) doc.fillColor(MUTED).font('Helvetica').fontSize(11).text('Nessun ragazzo in questo gruppo.', L, y + 10);
@@ -205,7 +210,7 @@ router.get('/xlsx', async (req, res) => {
 
     g.ragazzi.forEach((r, i) => {
       const row = ws.getRow(5 + i);
-      [i + 1, r.cognome, r.nome, r.dataNascita, r.luogoNascita, via(r), r.telefonoGenitore, statoIscrizione(r), testoFratelli(r, '; ')]
+      [i + 1, r.cognome, r.nome, r.dataNascita, r.luogoNascita, via(r), r.telefonoGenitore, r.stato, testoFratelli(r, '; ')]
         .forEach((val, k) => { row.getCell(k + 1).value = val; });
       row.getCell(9).alignment = { wrapText: true, vertical: 'top' };
     });

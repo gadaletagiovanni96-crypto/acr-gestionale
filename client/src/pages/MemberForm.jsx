@@ -133,6 +133,20 @@ export default function MemberForm() {
     try { await api.post(`/members/${id}/rientro`); setOk('Ragazzo riportato in parrocchia.'); carica(); } catch (x) { setErr(x.message); }
   };
 
+  // "Non si iscrive": resta negli elenchi come Non iscritto (anche dopo la chiusura dell'anno). Si può annullare.
+  const nonSiIscrive = async (valore) => {
+    const domanda = valore
+      ? `Segnare ${f.nome} ${f.cognome} come NON ISCRITTO?\n\nNon vuole iscriversi quest'anno: non comparirà più tra i "da completare", nemmeno dopo la chiusura dell'anno.`
+      : `${f.nome} ${f.cognome} vuole iscriversi? Tornerà tra i "da completare".`;
+    if (!confirm(domanda)) return;
+    setErr(''); setOk('');
+    try {
+      await api.post(`/members/${id}/non-iscritto`, { nonIscritto: valore });
+      await carica();
+      setOk(valore ? 'Segnato come non iscritto.' : 'Ora risulta da completare.');
+    } catch (x) { setErr(x.message); }
+  };
+
   const elimina = async () => {
     if (!confirm(`Eliminare definitivamente l'iscrizione di ${f.nome} ${f.cognome}?`)) return;
     try { await api.del(`/members/${id}`); nav('/'); } catch (x) { setErr(x.message); }
@@ -207,6 +221,7 @@ export default function MemberForm() {
             <Campo label="Data del versamento"><input type="date" value={f.dataVersamento} onChange={set('dataVersamento')} required={Number(f.quotaVersata) > 0} /></Campo>
           </div>
           <p className="hint">L'iscrizione risulta completata quando è stata versata una quota.</p>
+          {id && f.nonIscritto && <p className="notice">Non si iscrive quest'anno. Se versa la quota risulterà di nuovo iscritto.</p>}
         </fieldset>
 
 
@@ -236,6 +251,10 @@ export default function MemberForm() {
         <div className="actions">
             <button className="primary" disabled={busy}>{id ? 'Salva modifiche' : 'Registra iscrizione'}</button>
             {id && user.ruolo === 'admin' && <button type="button" className="danger" onClick={elimina}>Elimina iscrizione</button>}
+            {id && !f.trasferito && !f.nonIscritto && !(Number(f.quotaVersata) > 0) && (
+              <button type="button" className="ghost" onClick={() => nonSiIscrive(true)}>Non si iscrive</button>
+            )}
+            {id && f.nonIscritto && <button type="button" className="ghost" onClick={() => nonSiIscrive(false)}>Annulla «Non si iscrive»</button>}
         </div>
       </form>
 

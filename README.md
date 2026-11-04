@@ -38,5 +38,9 @@ cd ../server && npm install && npm start   # serve API e frontend dalla porta 40
 - **Trasferimenti**: dalla scheda, un educatore o l'admin scrive il nome della parrocchia e preme *Trasferisci*. Il ragazzo esce dagli elenchi e compare solo agli admin nella sezione *Trasferiti in altre parrocchie*, dove l'admin può anche riportarlo in parrocchia.
 - **PDF**: il pulsante *Scarica PDF* nella pagina Ragazzi crea l'elenco, A4 orizzontale, un gruppo per pagina con nome del gruppo ed educatori, cognome, nome, data e luogo di nascita, via e telefono del genitore, rispettando i filtri attivi.
 - Nei menu dei gruppi compaiono i nomi degli educatori, ad es. «III elementare - Giovanni e Giorgia».
-- **Iscrizione completata** = quota versata maggiore di zero (con data del versamento).
+- **Stato dell'iscrizione** (tre valori, anche nell'Excel):
+  - *Iscritto*: quota versata maggiore di zero (con data del versamento).
+  - *Da completare*: non ha ancora versato la quota, ma la verserà.
+  - *Non iscritto*: non vuole iscriversi (pulsante *Non si iscrive* nella scheda, annullabile). Alla chiusura dell'anno resta *Non iscritto*; se versa la quota torna *Iscritto*.
+- **Filtri** della pagina Ragazzi: Tutti / Iscritti / Da completare / Non iscritti · Tutti / Tesserati / Non tesserati (solo admin) · Tutti / Con fratelli / Senza fratelli. PDF ed Excel rispettano i filtri.
 - **Fratelli**: i ragazzi collegati condividono un `familyId`; collegare due famiglie diverse le unisce.
