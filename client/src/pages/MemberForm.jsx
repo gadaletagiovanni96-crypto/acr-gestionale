@@ -248,6 +248,9 @@ export default function MemberForm() {
             </div>
             <p className="hint">Se ci sono fratelli collegati non ancora tesserati, quando accendi l'interruttore ti verrà chiesto se tesserare anche loro.</p>
             <p className='hint'>Chiedo al Parroco di raccogliere la quota dell'adesione prima di segnare il tesseramento e di consegnarla al responsabile.</p>
+            <div className='actions'>
+                <button className="primary" onClick={salva}disabled={busy}>Salva</button>
+            </div>
           </fieldset>}
 
       {id && !f.trasferito && (
