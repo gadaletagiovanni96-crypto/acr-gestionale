@@ -18,8 +18,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', soloAdmin, async (req, res) => {
-  const { nome, descrizione, educatori } = req.body;
-  const g = await Group.create({ nome, descrizione, educatori: educatori || [] });
+  const { nome, descrizione, educatori, contaNelTotale } = req.body;
+  const g = await Group.create({ nome, descrizione, educatori: educatori || [], contaNelTotale: contaNelTotale !== false });
   res.status(201).json(await g.populate('educatori', 'nome cognome'));
 });
 
@@ -48,8 +48,8 @@ router.post('/sposta', soloAdmin, async (req, res) => {
 router.put('/:id', soloAdmin, async (req, res) => {
   const g = await Group.findById(req.params.id);
   if (!g) return res.status(404).json({ message: 'Gruppo non trovato' });
-  const { nome, descrizione, educatori } = req.body;
-  g.set({ nome, descrizione, educatori: educatori || [] });
+  const { nome, descrizione, educatori, contaNelTotale } = req.body;
+  g.set({ nome, descrizione, educatori: educatori || [], contaNelTotale: contaNelTotale !== false });
   await g.save();
   res.json(await g.populate('educatori', 'nome cognome'));
 });
