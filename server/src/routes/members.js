@@ -380,7 +380,7 @@ router.delete('/:id', soloAdmin, async (req, res) => {
 });
 
 // "Non si iscrive" (educatori e admin): il ragazzo resta negli elenchi come Non iscritto, anche dopo la chiusura dell'anno.
-// Con { nonIscritto: false } torna "da completare".
+// Con { nonIscritto: false } torna "da completare". Con { scollegaFratelli: true } viene anche tolto dalla famiglia.
 router.post('/:id/non-iscritto', async (req, res) => {
   const m = req.member;
   const valore = req.body.nonIscritto !== false;
@@ -388,6 +388,7 @@ router.post('/:id/non-iscritto', async (req, res) => {
     return res.status(400).json({ message: 'Questo ragazzo ha già versato la quota: per segnarlo come non iscritto azzera prima la quota.' });
   m.nonIscritto = valore;
   await m.save();
+  if (valore && req.body.scollegaFratelli === true && m.familyId) await scollegaDaFamiglia(m);
   res.json(m);
 });
 

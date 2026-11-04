@@ -124,15 +124,17 @@ export default function MemberForm() {
     if (confirm(`${domanda}\n\nVerrà registrato quando salvi la scheda.`)) setTesseraFratelli(true);
   };
 
+  // Usata da "Trasferisci" e "Non si iscrive": se ha fratelli collegati, chiede se scollegarlo dalla famiglia
+  const chiediScollegaFratelli = () => {
+    if (!fratelli.length) return false;
+    const nomi = fratelli.map((fr) => `${fr.nome} ${fr.cognome}`).join(', ');
+    return confirm(`Attenzione: ${f.nome} ha ${fratelli.length === 1 ? 'un fratello collegato' : `${fratelli.length} fratelli collegati`} (${nomi}).\n\n`
+      + `Vuoi scollegarlo dalla famiglia?\n\nOK = scollega dalla famiglia\nAnnulla = lascia i fratelli collegati`);
+  };
+
   const trasferisci = async () => {
     if (!confirm(`Trasferire ${f.nome} ${f.cognome} alla parrocchia "${trasf.trim()}"?\n\nUscirà dagli elenchi e la sua scheda resterà visibile solo agli amministratori.`)) return;
-    // Se ha fratelli collegati, chiede se scollegarlo dalla famiglia
-    let scollegaFratelli = false;
-    if (fratelli.length) {
-      const nomi = fratelli.map((fr) => `${fr.nome} ${fr.cognome}`).join(', ');
-      scollegaFratelli = confirm(`Attenzione: ${f.nome} ha ${fratelli.length === 1 ? 'un fratello collegato' : `${fratelli.length} fratelli collegati`} (${nomi}).\n\n`
-        + `Vuoi scollegarlo dalla famiglia?\n\nOK = scollega dalla famiglia\nAnnulla = lascia i fratelli collegati`);
-    }
+    const scollegaFratelli = chiediScollegaFratelli();
     try { await api.post(`/members/${id}/trasferisci`, { parrocchia: trasf, scollegaFratelli }); nav('/'); } catch (x) { setErr(x.message); }
   };
   const rientro = async () => {
@@ -146,11 +148,12 @@ export default function MemberForm() {
       ? `Segnare ${f.nome} ${f.cognome} come NON ISCRITTO?\n\nNon vuole iscriversi quest'anno: non comparirà più tra i "da completare", nemmeno dopo la chiusura dell'anno.`
       : `${f.nome} ${f.cognome} vuole iscriversi? Tornerà tra i "da completare".`;
     if (!confirm(domanda)) return;
+    const scollegaFratelli = valore && chiediScollegaFratelli();
     setErr(''); setOk('');
     try {
-      await api.post(`/members/${id}/non-iscritto`, { nonIscritto: valore });
+      await api.post(`/members/${id}/non-iscritto`, { nonIscritto: valore, scollegaFratelli });
       await carica();
-      setOk(valore ? 'Segnato come non iscritto.' : 'Ora risulta da completare.');
+      setOk(valore ? `Segnato come non iscritto${scollegaFratelli ? ' e scollegato dalla famiglia' : ''}.` : 'Ora risulta da completare.');
     } catch (x) { setErr(x.message); }
   };
 
