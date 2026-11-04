@@ -5,6 +5,7 @@ const { disegnaMarchio, scriviAnnoEData } = require('../logo');
 const { leggiImpostazioni } = require('../impostazioni');
 const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
+const { statoIscrizione } = Member;
 const Group = require('../models/Group');
 const { auth, soloAdmin } = require('../middleware/auth');
 
@@ -34,8 +35,9 @@ function pulisci(body, admin = false) {
 }
 
 // Filtro condiviso da elenco e PDF. Restituisce null se non c'è nulla da mostrare.
+// iscrizione = si | dacompletare | noniscritti   tesserato = si | no (solo admin)   fratelli = si | no
 function filtroDa(req) {
-  const { gruppo, iscrizione, fratelli, q } = req.query;
+  const { gruppo, iscrizione, tesserato, fratelli, q } = req.query;
   const admin = req.user.ruolo === 'admin';
   const f = {};
   if (!admin) f.trasferito = { $ne: true };
@@ -45,8 +47,10 @@ function filtroDa(req) {
   } else if (gruppo === 'nessuno') { f.gruppo = null; f.trasferito = { $ne: true }; }
   else if (gruppo) f.gruppo = gruppo;
   if (iscrizione === 'si') f.quotaVersata = { $gt: 0 };
-  if (iscrizione === 'no') f.quotaVersata = { $not: { $gt: 0 } };
-  if (iscrizione === 'nontess' && admin) f.tesserato = { $ne: true }; // solo admin: ragazzi non tesserati
+  if (iscrizione === 'dacompletare') { f.quotaVersata = { $not: { $gt: 0 } }; f.nonIscritto = { $ne: true }; }
+  if (iscrizione === 'noniscritti') { f.quotaVersata = { $not: { $gt: 0 } }; f.nonIscritto = true; }
+  if (admin && tesserato === 'si') f.tesserato = true; // il tesseramento lo vede solo l'admin
+  if (admin && tesserato === 'no') f.tesserato = { $ne: true };
   if (fratelli === 'si') f.familyId = { $ne: null };
   if (fratelli === 'no') f.familyId = null;
   if (q) {
@@ -61,6 +65,9 @@ router.get('/', async (req, res) => {
   if (!f) return res.json([]);
   res.json(await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 }));
 });
+
+const descrizioneIscrizione = (v) => ({ si: 'solo iscritti', dacompletare: 'solo da completare', noniscritti: 'solo non iscritti' }[v] || '');
+const descrizioneTessera = (v) => ({ si: 'solo tesserati', no: 'solo non tesserati' }[v] || '');
 
 // ---------- PDF degli elenchi (un gruppo per pagina) ----------
 // Per ogni ragazzo elenca i fratelli con il loro gruppo: serve al PDF "con fratelli" e all'Excel dell'admin.
@@ -101,7 +108,8 @@ router.get('/pdf', async (req, res) => {
   const dataIt = (d) => (d ? new Date(d).toLocaleDateString('it-IT') : '');
   const euro = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const filtroTesto = [
-    req.query.iscrizione === 'si' ? 'solo iscritti' : req.query.iscrizione === 'no' ? 'solo non ancora iscritti' : req.query.iscrizione === 'nontess' ? 'solo non tesserati' : '',
+    descrizioneIscrizione(req.query.iscrizione),
+    admin ? descrizioneTessera(req.query.tesserato) : '',
     req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : '',
     req.query.q ? `ricerca "${req.query.q}"` : '',
   ].filter(Boolean).join(', ');
@@ -113,7 +121,8 @@ router.get('/pdf', async (req, res) => {
 
   const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = conFratelli ? 9 : 10;
   const INK = '#17324d', MUTED = '#5d6c7b';
-  const ROSSO = '#fde4e1'; // rosso leggero per i ragazzi non ancora iscritti
+  const ROSSO = '#fde4e1'; // rosso leggero per i ragazzi con iscrizione da completare
+  const GRIGIO = '#e3e6ea'; // grigio per chi ha deciso di non iscriversi
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze pensate per A4 orizzontale (762 pt utili): nessun testo viene troncato, va a capo
   let COL_N = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 115 }, { t: 'Nome', w: 105 }, { t: 'Data di nascita', w: 78 },
@@ -150,11 +159,13 @@ router.get('/pdf', async (req, res) => {
     doc.moveTo(L, y + rh).lineTo(L + TW, y + rh).lineWidth(0.5).strokeColor('#dbe1e8').stroke();
   };
 
-  // Piccola legenda: il rosso chiaro indica chi non ha ancora completato l'iscrizione
+  // Piccola legenda: rosso chiaro = da completare, grigio = non iscritto
   const legenda = () => {
     const ly = doc.y + 6;
     doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
-    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non ancora iscritto', L + 16, ly + 1, { lineBreak: false });
+    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Da completare', L + 16, ly + 1, { lineBreak: false });
+    doc.rect(L + 110, ly, 10, 10).lineWidth(0.5).fillAndStroke(GRIGIO, '#b8bec6');
+    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non iscritto', L + 126, ly + 1, { lineBreak: false });
   };
 
   const iniziaPagina = (s, seguito) => {
@@ -165,8 +176,11 @@ router.get('/pdf', async (req, res) => {
     doc.font('Helvetica').fontSize(11).fillColor(MUTED);
     if (!s.senzaEducatori) doc.text('Educatori: ' + (s.educatori.length ? s.educatori.join(', ') : 'nessuno assegnato'), L, doc.y + 2, { width: TW });
     const n = s.lista.length;
-    const iscritti = s.lista.filter((m) => m.quotaVersata > 0).length;
-    doc.text([`${n} ragazz${n === 1 ? 'o' : 'i'}`, s.trasferiti ? '' : `${iscritti} iscritt${iscritti === 1 ? 'o' : 'i'}`, filtroTesto].filter(Boolean).join(' · '), L, doc.y + 1, { width: TW });
+    const conta = (st) => s.lista.filter((m) => statoIscrizione(m) === st).length;
+    const iscritti = conta('Iscritto'), daCompl = conta('Da completare'), nonIscr = conta('Non iscritto');
+    const stati = s.trasferiti ? '' : [`${iscritti} iscritt${iscritti === 1 ? 'o' : 'i'}`, daCompl ? `${daCompl} da completare` : '',
+      nonIscr ? `${nonIscr} non iscritt${nonIscr === 1 ? 'o' : 'i'}` : ''].filter(Boolean).join(' · ');
+    doc.text([`${n} ragazz${n === 1 ? 'o' : 'i'}`, stati, filtroTesto].filter(Boolean).join(' · '), L, doc.y + 1, { width: TW });
     if (!s.trasferiti) legenda();
     const y = doc.y + 10;
     const cols = s.trasferiti ? COL_T : COL_N;
@@ -186,8 +200,9 @@ router.get('/pdf', async (req, res) => {
       if (conFratelli) { celle.push(fratelliDi(m).join('\n') || '—'); celle.push(m.tesserato ? 'Sì' : 'No'); } // ultima colonna: tesserato
       const rh = altezza(celle, cols, false);
       if (y + rh > H - 50) y = iniziaPagina(s, true);
-      const nonIscritto = !s.trasferiti && !(m.quotaVersata > 0);
-      riga(celle, cols, y, rh, false, nonIscritto ? ROSSO : i % 2 === 0 ? '#f1f5f9' : null, '#1b2733');
+      const stato = s.trasferiti ? '' : statoIscrizione(m);
+      const sfondo = stato === 'Da completare' ? ROSSO : stato === 'Non iscritto' ? GRIGIO : i % 2 === 0 ? '#f1f5f9' : null;
+      riga(celle, cols, y, rh, false, sfondo, '#1b2733');
       y += rh;
     });
   }
@@ -241,7 +256,8 @@ router.get('/xlsx', async (req, res) => {
   // Foglio iniziale con il riepilogo dei gruppi
   const riep = wb.addWorksheet('Riepilogo');
   riep.columns = [{ header: 'Gruppo', key: 'g', width: 32 }, { header: 'Educatori', key: 'e', width: 40 },
-    { header: 'Ragazzi', key: 'n', width: 10 }, { header: 'Iscritti', key: 'i', width: 10 }, { header: 'Incassato', key: 't', width: 14 }];
+    { header: 'Ragazzi', key: 'n', width: 10 }, { header: 'Iscritti', key: 'i', width: 10 },
+    { header: 'Da completare', key: 'd', width: 14 }, { header: 'Non iscritti', key: 'x', width: 12 }, { header: 'Incassato', key: 't', width: 14 }];
   riep.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   riep.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INK } };
   riep.getColumn('t').numFmt = '"€" #,##0.00';
@@ -263,6 +279,9 @@ router.get('/xlsx', async (req, res) => {
     ws.getCell('A1').value = s.titolo;
     ws.getCell('A1').font = { bold: true, size: 14, color: { argb: INK } };
     if (!s.senzaEducatori) ws.getCell('A2').value = 'Educatori: ' + (s.educatori.join(', ') || 'nessuno assegnato');
+    const filtri = [descrizioneIscrizione(req.query.iscrizione), admin ? descrizioneTessera(req.query.tesserato) : '',
+      req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : ''].filter(Boolean).join(', ');
+    if (filtri) ws.getCell('A3').value = 'Filtri: ' + filtri;
     const head = ws.getRow(4);
     head.values = cols.map((c) => c.t);
     head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -274,7 +293,7 @@ router.get('/xlsx', async (req, res) => {
       const fila = ws.addRow({
         n: i + 1, cognome: m.cognome, nome: m.nome, nascita: m.dataNascita, luogo: m.luogoNascita,
         via: m.indirizzo, citta: m.citta, genitore: m.nomeGenitore, tel: m.telefonoGenitore,
-        stato: pagato ? 'Iscritto' : 'Da completare', quota: pagato ? m.quotaVersata : null, dataV: pagato ? m.dataVersamento : null,
+        stato: statoIscrizione(m), quota: pagato ? m.quotaVersata : null, dataV: pagato ? m.dataVersamento : null,
         trasf: s.trasferiti ? `${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + new Date(m.dataTrasferimento).toLocaleDateString('it-IT') + ')' : ''}` : undefined,
         fratelli: admin ? fratelliDi(m).join('; ') : undefined,
         tess: admin ? (m.tesserato ? 'Sì' : 'No') : undefined,
@@ -290,7 +309,9 @@ router.get('/xlsx', async (req, res) => {
 
     if (!s.trasferiti) {
       const pagati = s.lista.filter((m) => m.quotaVersata > 0);
-      riep.addRow({ g: s.titolo, e: s.educatori.join(', '), n: s.lista.length, i: pagati.length, t: pagati.reduce((a, m) => a + m.quotaVersata, 0) });
+      const nonIscr = s.lista.filter((m) => statoIscrizione(m) === 'Non iscritto').length;
+      riep.addRow({ g: s.titolo, e: s.educatori.join(', '), n: s.lista.length, i: pagati.length, d: s.lista.length - pagati.length - nonIscr,
+        x: nonIscr, t: pagati.reduce((a, m) => a + m.quotaVersata, 0) });
     }
   }
 
@@ -332,6 +353,18 @@ router.delete('/:id', soloAdmin, async (req, res) => {
   if (m.familyId && (await Member.countDocuments({ familyId: m.familyId })) < 2)
     await Member.updateMany({ familyId: m.familyId }, { familyId: null });
   res.status(204).end();
+});
+
+// "Non si iscrive" (educatori e admin): il ragazzo resta negli elenchi come Non iscritto, anche dopo la chiusura dell'anno.
+// Con { nonIscritto: false } torna "da completare".
+router.post('/:id/non-iscritto', async (req, res) => {
+  const m = req.member;
+  const valore = req.body.nonIscritto !== false;
+  if (valore && m.quotaVersata > 0)
+    return res.status(400).json({ message: 'Questo ragazzo ha già versato la quota: per segnarlo come non iscritto azzera prima la quota.' });
+  m.nonIscritto = valore;
+  await m.save();
+  res.json(m);
 });
 
 // Trasferimento in un'altra parrocchia (educatori e admin): esce dagli elenchi, resta visibile solo agli admin

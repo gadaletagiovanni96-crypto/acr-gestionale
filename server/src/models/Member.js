@@ -23,6 +23,8 @@ const memberSchema = new Schema(
     note: { type: String, trim: true, default: '' },
     consensoPrivacy: { type: Boolean, default: false },
     tesserato: { type: Boolean, default: false },
+    // Ha deciso di non iscriversi (diverso da "da completare"): resta così anche dopo la chiusura dell'anno
+    nonIscritto: { type: Boolean, default: false },
     // Gruppo e quota
     gruppo: { type: Schema.Types.ObjectId, ref: 'Group', default: null },
     quotaVersata: { type: Number, min: [0, 'La quota non può essere negativa'], default: 0 },
@@ -48,7 +50,21 @@ const memberSchema = new Schema(
   { timestamps: true, toJSON: { virtuals: true }, id: false }
 );
 
+// Chi versa la quota è iscritto: se era segnato come "non si iscrive" il segno si toglie da solo
+memberSchema.pre('validate', function (next) {
+  if (this.quotaVersata > 0) this.nonIscritto = false;
+  next();
+});
+
 // Un ragazzo risulta iscritto quando ha versato la quota
 memberSchema.virtual('iscritto').get(function () { return this.quotaVersata > 0; });
+// Tre stati: Iscritto, Da completare (verserà la quota), Non iscritto (non vuole iscriversi)
+memberSchema.virtual('statoIscrizione').get(function () { return statoIscrizione(this); });
+
+function statoIscrizione(m) {
+  if (m.quotaVersata > 0) return 'Iscritto';
+  return m.nonIscritto ? 'Non iscritto' : 'Da completare';
+}
 
 module.exports = model('Member', memberSchema);
+module.exports.statoIscrizione = statoIscrizione;

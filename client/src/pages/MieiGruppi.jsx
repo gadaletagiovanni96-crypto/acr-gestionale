@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { api, dataIt, scarica } from '../api';
 import { useAuth } from '../auth.jsx';
 
+const STATI = { si: 'Iscritto', dacompletare: 'Da completare', noniscritti: 'Non iscritto' };
 const minuscolo = (s) => String(s || '').toLowerCase();
 // Stesso testo che usa il server: nome, cognome, luogo, via, telefono e nomi dei fratelli
 const testoRicerca = (r) => minuscolo([r.cognome, r.nome, `${r.nome} ${r.cognome}`, r.luogoNascita, r.indirizzo, r.citta, r.telefonoGenitore,
@@ -32,7 +33,7 @@ function Contenuto() {
 
   const sezioni = useMemo(() => {
     const ok = (r) =>
-      (!filtro.iscrizione || (filtro.iscrizione === 'si') === r.iscritto) &&
+      (!filtro.iscrizione || STATI[filtro.iscrizione] === r.stato) &&
       (!filtro.fratelli || (filtro.fratelli === 'si') === r.fratelli.length > 0) &&
       (!parole.length || parole.every((p) => testoRicerca(r).includes(p)));
     const lista = (gruppi || []).map((g) => ({ ...g, totale: g.ragazzi.length, ragazzi: g.ragazzi.filter(ok) }));
@@ -74,7 +75,7 @@ function Contenuto() {
         <>
           <div className="filters">
             <Scelta etichetta="Iscrizione" valore={filtro.iscrizione} onChange={set('iscrizione')}
-              opzioni={[['', 'Tutti'], ['si', 'Iscritti'], ['no', 'Non ancora iscritti']]} />
+              opzioni={[['', 'Tutti'], ['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
             <Scelta etichetta="Fratelli" valore={filtro.fratelli} onChange={set('fratelli')}
               opzioni={[['', 'Tutti'], ['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
             <input type="search" placeholder="Cerca nome, cognome, via, telefono…" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />
@@ -116,7 +117,7 @@ function Contenuto() {
                       <td>{r.luogoNascita || '—'}</td>
                       <td>{[r.indirizzo, r.citta].filter(Boolean).join(', ') || '—'}</td>
                       <td className="nowrap">{r.telefonoGenitore ? <a href={`tel:${r.telefonoGenitore.replace(/\s/g, '')}`}>{r.telefonoGenitore}</a> : '—'}</td>
-                      <td className="nowrap"><span className={`chip ${r.iscritto ? 'ok' : 'warn'}`}>{r.iscritto ? 'Iscritto' : 'Da completare'}</span></td>
+                      <td className="nowrap"><span className={`chip ${r.iscritto ? 'ok' : r.stato === 'Non iscritto' ? 'no' : 'warn'}`}>{r.stato}</span></td>
                       <td>
                         {r.fratelli.length ? r.fratelli.map((f) => (
                           <div className="sib-line" key={f._id}>
