@@ -5,14 +5,19 @@ import { useAuth } from '../auth.jsx';
 import PannelloFiltri from '../components/PannelloFiltri.jsx';
 import { useImpostazioni } from '../impostazioni';
 import MenuTendina from '../components/MenuTendina.jsx';
+import { SceltaMultipla, GruppiMultipli } from '../components/FiltriMultipli.jsx';
 
+// Ogni filtro è una lista di scelte (vuota = Tutti). Dentro un filtro basta una scelta qualsiasi, tra filtri diversi valgono tutti.
 const CHIAVE_FILTRI = 'acr_filtri_ragazzi';
-const FILTRI_VUOTI = { iscrizione: '', tesserato: '', fratelli: '', gruppo: '', q: '' };
-const STATI = ['', 'si', 'dacompletare', 'noniscritti'];
+const FILTRI_VUOTI = { iscrizione: [], tesserato: [], fratelli: [], gruppo: [], q: '' };
+const AMMESSI = { iscrizione: ['si', 'dacompletare', 'noniscritti'], tesserato: ['si', 'no'], fratelli: ['si', 'no'] };
 const filtriSalvati = () => {
   try {
-    const f = { ...FILTRI_VUOTI, ...JSON.parse(sessionStorage.getItem(CHIAVE_FILTRI)) };
-    if (!STATI.includes(f.iscrizione)) f.iscrizione = ''; // valori delle versioni precedenti
+    const salvati = JSON.parse(sessionStorage.getItem(CHIAVE_FILTRI)) || {};
+    const f = { ...FILTRI_VUOTI, q: typeof salvati.q === 'string' ? salvati.q : '' };
+    const comeLista = (v) => (Array.isArray(v) ? v : v ? [v] : []); // le versioni precedenti salvavano un solo valore
+    for (const k of Object.keys(AMMESSI)) f[k] = comeLista(salvati[k]).filter((v) => AMMESSI[k].includes(v));
+    f.gruppo = comeLista(salvati.gruppo).filter((v) => typeof v === 'string');
     return f;
   } catch { return FILTRI_VUOTI; }
 };
@@ -41,7 +46,7 @@ export default function Members() {
       .then(([m, g]) => {
         setMembers(m); setGroups(g);
         // se il gruppo salvato nel filtro non esiste più (es. eliminato), toglie solo quel filtro
-        setFiltro((f) => (f.gruppo && !['nessuno', 'trasferiti'].includes(f.gruppo) && !g.some((x) => x._id === f.gruppo) ? { ...f, gruppo: '' } : f));
+        setFiltro((f) => ({ ...f, gruppo: f.gruppo.filter((v) => ['nessuno', 'trasferiti'].includes(v) || g.some((x) => x._id === v)) }));
       })
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
@@ -54,27 +59,34 @@ export default function Members() {
   const sezioni = useMemo(() => {
     const q = filtro.q.trim().toLowerCase();
     const nomeOk = (m) => !q || `${m.nome} ${m.cognome}`.toLowerCase().includes(q);
-    const fratelliOk = (m) => !filtro.fratelli || (filtro.fratelli === 'si') === !!m.familyId;
-    const statoOk = (m) => !filtro.iscrizione || filtro.iscrizione === statoDi(m);
-    const tesseraOk = (m) => !admin || !filtro.tesserato || (filtro.tesserato === 'si') === !!m.tesserato;
+    const fratelliOk = (m) => filtro.fratelli.length !== 1 || (filtro.fratelli[0] === 'si') === !!m.familyId;
+    const statoOk = (m) => !filtro.iscrizione.length || filtro.iscrizione.includes(statoDi(m));
+    const tesseraOk = (m) => !admin || filtro.tesserato.length !== 1 || (filtro.tesserato[0] === 'si') === !!m.tesserato;
     const ok = (m) => statoOk(m) && tesseraOk(m) && fratelliOk(m) && nomeOk(m);
-    const lista = [...groups.map((g) => ({ id: g._id, nome: g.nome, educatori: g.educatori })), { id: 'nessuno', nome: 'Senza gruppo', educatori: [] }]
-      .filter((s) => !filtro.gruppo || filtro.gruppo === s.id)
+    const gruppoOk = (id) => !filtro.gruppo.length || filtro.gruppo.includes(id);
+    const lista = [...groups.map((g) => ({ id: g._id, nome: g.nome, educatori: g.educatori, conta: g.contaNelTotale !== false })),
+      { id: 'nessuno', nome: 'Senza gruppo', educatori: [], conta: true }]
+      .filter((s) => gruppoOk(s.id))
       .map((s) => {
         const tutti = attivi.filter((m) => (m.gruppo?._id || 'nessuno') === s.id);
         return { ...s, tutti, iscritti: tutti.filter((m) => m.iscritto).length, visibili: tutti.filter(ok) };
       })
       .filter((s) => s.id !== 'nessuno' || s.tutti.length)
-      .filter((s) => !(filtro.iscrizione || filtro.tesserato || filtro.fratelli || q) || s.visibili.length);
-    if (admin && trasferiti.length && !filtro.iscrizione && !filtro.tesserato && (!filtro.gruppo || filtro.gruppo === 'trasferiti')) {
+      .filter((s) => !(filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || q) || s.visibili.length);
+    // I trasferiti: compaiono senza filtri su iscrizione e tessera, oppure se scelti esplicitamente tra i gruppi
+    const trasfScelti = filtro.gruppo.includes('trasferiti');
+    if (admin && trasferiti.length && (trasfScelti || (!filtro.gruppo.length && !filtro.iscrizione.length && !filtro.tesserato.length))) {
       const visibili = trasferiti.filter((m) => nomeOk(m) && fratelliOk(m));
-      if (visibili.length || !(q || filtro.fratelli)) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
+      if (visibili.length || !(q || filtro.fratelli.length)) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
     }
     return lista;
   }, [attivi, trasferiti, groups, filtro, admin]);
 
-  const totIscritti = attivi.filter((m) => m.iscritto).length;
-  const totNonIscritti = attivi.filter((m) => statoDi(m) === 'noniscritti').length;
+  // Totali: esclusi i ragazzi dei gruppi segnati "non contare nel totale"
+  const esclusi = groups.filter((g) => g.contaNelTotale === false);
+  const conteggiati = attivi.filter((m) => !m.gruppo || !esclusi.some((g) => g._id === m.gruppo._id));
+  const totIscritti = conteggiati.filter((m) => m.iscritto).length;
+  const totNonIscritti = conteggiati.filter((m) => statoDi(m) === 'noniscritti').length;
 
   const pdf = async (conFratelli) => {
     setErr(''); setPdfBusy(true);
@@ -93,7 +105,8 @@ export default function Members() {
       <div className="page-head">
         <div>
           <h1>Ragazzi</h1>
-          <p className="muted">{attivi.length} registrati · {totIscritti} iscritti · {attivi.length - totIscritti - totNonIscritti} da completare · {totNonIscritti} non iscritti</p>
+          <p className="muted">{conteggiati.length} registrati · {totIscritti} iscritti · {conteggiati.length - totIscritti - totNonIscritti} da completare · {totNonIscritti} non iscritti</p>
+          {esclusi.length > 0 && <p className="muted" style={{ fontSize: '.85rem', marginTop: '.15rem' }}>Non conteggiati nel totale: {esclusi.map((g) => g.nome).join(', ')}</p>}
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
           {admin ? (
@@ -108,34 +121,21 @@ export default function Members() {
       </div>
       {iscrizioniChiuse && <p className="notice" style={{ marginBottom: '1rem' }}>Le iscrizioni di nuovi ragazzi sono chiuse al momento. Solo il parroco o il responsabile possono aggiungere nuovi iscritti.</p>}
       <PannelloFiltri
-        badge={[filtro.iscrizione, filtro.tesserato, filtro.fratelli, filtro.gruppo].filter(Boolean).length}
-        onAzzera={filtro.iscrizione || filtro.tesserato || filtro.fratelli || filtro.gruppo || filtro.q
+        badge={[filtro.iscrizione, filtro.tesserato, filtro.fratelli, filtro.gruppo].filter((v) => v.length).length}
+        onAzzera={filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || filtro.gruppo.length || filtro.q
           ? () => setFiltro(FILTRI_VUOTI) : null}
         ricerca={<input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />}
       >
-        <div className="segmented" role="radiogroup" aria-label="Stato iscrizione">
-          {[['', 'Tutti'], ['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']].map(([v, l]) => (
-            <button key={v} className={filtro.iscrizione === v ? 'on' : ''} onClick={() => set('iscrizione')(v)} role="radio" aria-checked={filtro.iscrizione === v}>{l}</button>
-          ))}
-        </div>
+        <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+          opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
         {admin && (
-          <div className="segmented" role="radiogroup" aria-label="Tesseramento">
-            {[['', 'Tutti'], ['si', 'Tesserati'], ['no', 'Non tesserati']].map(([v, l]) => (
-              <button key={v} className={filtro.tesserato === v ? 'on' : ''} onClick={() => set('tesserato')(v)} role="radio" aria-checked={filtro.tesserato === v}>{l}</button>
-            ))}
-          </div>
+          <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
+            opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
         )}
-        <div className="segmented" role="radiogroup" aria-label="Fratelli">
-          {[['', 'Tutti'], ['si', 'Con fratelli'], ['no', 'Senza fratelli']].map(([v, l]) => (
-            <button key={v} className={filtro.fratelli === v ? 'on' : ''} onClick={() => set('fratelli')(v)} role="radio" aria-checked={filtro.fratelli === v}>{l}</button>
-          ))}
-        </div>
-        <select value={filtro.gruppo} onChange={(e) => set('gruppo')(e.target.value)} aria-label="Gruppo">
-          <option value="">Tutti i gruppi</option>
-          {groups.map((g) => <option key={g._id} value={g._id}>{labelGruppo(g)}</option>)}
-          <option value="nessuno">Senza gruppo</option>
-          {admin && <option value="trasferiti">Trasferiti</option>}
-        </select>
+        <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+          opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+        <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+          opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
       </PannelloFiltri>
 
       {err && <p className="error">{err}</p>}

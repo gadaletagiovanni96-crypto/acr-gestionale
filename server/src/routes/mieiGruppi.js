@@ -45,12 +45,16 @@ async function caricaGruppi(user) {
   }));
 }
 
-// ---------- Filtri: ?iscrizione=si|dacompletare|noniscritti  &fratelli=si|no  &q=testo ----------
+// ---------- Filtri (più valori separati da virgola): ?iscrizione=si,dacompletare,noniscritti  &fratelli=si,no  &q=testo ----------
 const minuscolo = (s) => String(s || '').toLowerCase();
-const siNo = (v) => (v === 'si' || v === 'no' ? v : '');
 const STATI = { si: 'Iscritto', dacompletare: 'Da completare', noniscritti: 'Non iscritto' };
-const filtriDa = (query) => ({ iscrizione: STATI[query.iscrizione] ? query.iscrizione : '', fratelli: siNo(query.fratelli), q: String(query.q || '').trim().slice(0, 100) });
-const filtriAttivi = (f) => !!(f.iscrizione || f.fratelli || f.q);
+const lista = (v, ammessi) => [...new Set(String(v || '').split(',').filter((x) => ammessi.includes(x)))];
+const filtriDa = (query) => ({
+  iscrizione: lista(query.iscrizione, Object.keys(STATI)),
+  fratelli: lista(query.fratelli, ['si', 'no']),
+  q: String(query.q || '').trim().slice(0, 100),
+});
+const filtriAttivi = (f) => !!(f.iscrizione.length || f.fratelli.length || f.q);
 
 // Testo in cui cerca la casella "Cerca": nome, cognome, luogo, via, telefono e nomi dei fratelli
 const testoRicerca = (r) => minuscolo([r.cognome, r.nome, `${r.nome} ${r.cognome}`, r.luogoNascita, r.indirizzo, r.citta, r.telefonoGenitore,
@@ -59,9 +63,8 @@ const testoRicerca = (r) => minuscolo([r.cognome, r.nome, `${r.nome} ${r.cognome
 function filtra(gruppi, f) {
   const parole = minuscolo(f.q).split(/\s+/).filter(Boolean); // devono comparire tutte
   const ok = (r) => {
-    if (f.iscrizione && r.stato !== STATI[f.iscrizione]) return false;
-    if (f.fratelli === 'si' && !r.fratelli.length) return false;
-    if (f.fratelli === 'no' && r.fratelli.length) return false;
+    if (f.iscrizione.length && !f.iscrizione.some((v) => STATI[v] === r.stato)) return false;
+    if (f.fratelli.length === 1 && (f.fratelli[0] === 'si') !== r.fratelli.length > 0) return false;
     if (parole.length) { const t = testoRicerca(r); if (!parole.every((p) => t.includes(p))) return false; }
     return true;
   };
@@ -69,8 +72,9 @@ function filtra(gruppi, f) {
 }
 
 const descrizioneFiltri = (f) => [
-  ({ si: 'solo iscritti', dacompletare: 'solo da completare', noniscritti: 'solo non iscritti' })[f.iscrizione] || '',
-  f.fratelli === 'si' ? 'con fratelli' : f.fratelli === 'no' ? 'senza fratelli' : '',
+  f.iscrizione.length && f.iscrizione.length < 3
+    ? 'solo ' + f.iscrizione.map((v) => ({ si: 'iscritti', dacompletare: 'da completare', noniscritti: 'non iscritti' })[v]).join(' o ') : '',
+  f.fratelli.length === 1 ? (f.fratelli[0] === 'si' ? 'con fratelli' : 'senza fratelli') : '',
   f.q ? `ricerca "${f.q}"` : '',
 ].filter(Boolean).join(', ');
 

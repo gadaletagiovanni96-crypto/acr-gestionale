@@ -126,7 +126,14 @@ export default function MemberForm() {
 
   const trasferisci = async () => {
     if (!confirm(`Trasferire ${f.nome} ${f.cognome} alla parrocchia "${trasf.trim()}"?\n\nUscirà dagli elenchi e la sua scheda resterà visibile solo agli amministratori.`)) return;
-    try { await api.post(`/members/${id}/trasferisci`, { parrocchia: trasf }); nav('/'); } catch (x) { setErr(x.message); }
+    // Se ha fratelli collegati, chiede se scollegarlo dalla famiglia
+    let scollegaFratelli = false;
+    if (fratelli.length) {
+      const nomi = fratelli.map((fr) => `${fr.nome} ${fr.cognome}`).join(', ');
+      scollegaFratelli = confirm(`Attenzione: ${f.nome} ha ${fratelli.length === 1 ? 'un fratello collegato' : `${fratelli.length} fratelli collegati`} (${nomi}).\n\n`
+        + `Vuoi scollegarlo dalla famiglia?\n\nOK = scollega dalla famiglia\nAnnulla = lascia i fratelli collegati`);
+    }
+    try { await api.post(`/members/${id}/trasferisci`, { parrocchia: trasf, scollegaFratelli }); nav('/'); } catch (x) { setErr(x.message); }
   };
   const rientro = async () => {
     if (!confirm('Riportare questo ragazzo in parrocchia?')) return;

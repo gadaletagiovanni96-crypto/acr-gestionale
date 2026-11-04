@@ -42,5 +42,7 @@ cd ../server && npm install && npm start   # serve API e frontend dalla porta 40
   - *Iscritto*: quota versata maggiore di zero (con data del versamento).
   - *Da completare*: non ha ancora versato la quota, ma la verserà.
   - *Non iscritto*: non vuole iscriversi (pulsante *Non si iscrive* nella scheda, annullabile). Alla chiusura dell'anno resta *Non iscritto*; se versa la quota torna *Iscritto*.
-- **Filtri** della pagina Ragazzi: Tutti / Iscritti / Da completare / Non iscritti · Tutti / Tesserati / Non tesserati (solo admin) · Tutti / Con fratelli / Senza fratelli. PDF ed Excel rispettano i filtri.
+- **Filtri** della pagina Ragazzi: Tutti / Iscritti / Da completare / Non iscritti · Tutti / Tesserati / Non tesserati (solo admin) · Tutti / Con fratelli / Senza fratelli · gruppi. In ogni riga si possono accendere più scelte insieme (es. *Da completare* + *Non iscritti*, oppure due gruppi). PDF ed Excel rispettano i filtri.
+- **Gruppi fuori dal totale**: nella modifica del gruppo, la casella *Conta i ragazzi di questo gruppo nel totale* (attiva di base). Se è spenta, i suoi ragazzi non entrano nei totali in cima alla pagina Ragazzi né nella riga *Totale* del riepilogo Excel.
+- **Trasferimento con fratelli**: se il ragazzo ha fratelli collegati, dopo la conferma viene chiesto se scollegarlo dalla famiglia.
 - **Fratelli**: i ragazzi collegati condividono un `familyId`; collegare due famiglie diverse le unisce.

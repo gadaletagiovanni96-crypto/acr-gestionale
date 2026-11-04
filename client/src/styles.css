@@ -265,3 +265,14 @@ tr.editing { background: #fff6d6; }
 
 .pericolo { border-color: #e3b9a1; border-left: 6px solid var(--warn); }
 .avviso-pericolo { margin: 0; padding: .7rem .9rem; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn); }
+/* ---------- Filtri a scelta multipla ---------- */
+.gruppi-multipli > button { min-width: 12rem; text-align: left; display: inline-flex; justify-content: space-between; gap: .5rem; }
+.gruppi-multipli .menu-lista { left: 0; right: auto; max-height: 60vh; overflow-y: auto; }
+.menu-lista.caselle label { display: flex; align-items: center; gap: .55rem; padding: .5rem .7rem; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.menu-lista.caselle label:hover { background: #eef2f6; }
+@media (max-width: 640px) {
+  .gruppi-multipli { width: 100%; }
+  .gruppi-multipli .menu-lista { position: static; margin-top: .4rem; box-shadow: none; }
+  .menu-lista.caselle label { white-space: normal; }
+}
+.chip.escluso { background: #e3e6ea; color: #4b5563; }

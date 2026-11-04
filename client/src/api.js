@@ -39,10 +39,19 @@ export const labelGruppo = (g) => {
   return edu ? `${g.nome} - ${edu}` : g.nome;
 };
 
+// Parametri dei filtri per l'indirizzo: le scelte multiple diventano "a,b,c"
+export function parametriFiltri(filtro) {
+  const p = new URLSearchParams();
+  Object.entries(filtro).forEach(([k, v]) => {
+    const testo = Array.isArray(v) ? v.join(',') : v;
+    if (testo) p.set(k, testo);
+  });
+  return p;
+}
+
 // Scarica il PDF degli elenchi con gli stessi filtri della pagina
 export async function scaricaPdf(filtro, extra = {}) {
-  const p = new URLSearchParams();
-  Object.entries({ ...filtro, ...extra }).forEach(([k, v]) => v && p.set(k, v));
+  const p = parametriFiltri({ ...filtro, ...extra });
   const res = await fetch('/api/members/pdf?' + p, { headers: { Authorization: `Bearer ${getToken()}` } });
   if (!res.ok) {
     const d = await res.json().catch(() => null);
@@ -57,8 +66,7 @@ export async function scaricaPdf(filtro, extra = {}) {
 }
 
 export async function scaricaExcel(filtro) {
-  const p = new URLSearchParams();
-  Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
+  const p = parametriFiltri(filtro);
   const res = await fetch('/api/members/xlsx?' + p, { headers: { Authorization: `Bearer ${getToken()}` } });
   if (!res.ok) {
     const d = await res.json().catch(() => null);

@@ -35,29 +35,56 @@ function pulisci(body, admin = false) {
 }
 
 // Filtro condiviso da elenco e PDF. Restituisce null se non c'è nulla da mostrare.
-// iscrizione = si | dacompletare | noniscritti   tesserato = si | no (solo admin)   fratelli = si | no
+// Ogni filtro accetta più valori separati da virgola (es. iscrizione=dacompletare,noniscritti):
+// dentro lo stesso filtro vale "uno qualsiasi", tra filtri diversi valgono tutti insieme.
+//   gruppo = id dei gruppi, nessuno, trasferiti (solo admin)
+//   iscrizione = si | dacompletare | noniscritti   tesserato = si | no (solo admin)   fratelli = si | no
+const lista = (v, ammessi) => [...new Set(String(v || '').split(',').map((x) => x.trim()).filter((x) => ammessi(x)))];
+const filtriScelti = (query, admin) => ({
+  gruppi: lista(query.gruppo, (x) => x === 'nessuno' || (x === 'trasferiti' && admin) || mongoose.isValidObjectId(x)),
+  iscrizione: lista(query.iscrizione, (x) => ['si', 'dacompletare', 'noniscritti'].includes(x)),
+  tesserato: admin ? lista(query.tesserato, (x) => ['si', 'no'].includes(x)) : [],
+  fratelli: lista(query.fratelli, (x) => ['si', 'no'].includes(x)),
+});
+
 function filtroDa(req) {
-  const { gruppo, iscrizione, tesserato, fratelli, q } = req.query;
   const admin = req.user.ruolo === 'admin';
-  const f = {};
-  if (!admin) f.trasferito = { $ne: true };
-  if (gruppo === 'trasferiti') {
-    if (!admin) return null;
-    f.trasferito = true;
-  } else if (gruppo === 'nessuno') { f.gruppo = null; f.trasferito = { $ne: true }; }
-  else if (gruppo) f.gruppo = gruppo;
-  if (iscrizione === 'si') f.quotaVersata = { $gt: 0 };
-  if (iscrizione === 'dacompletare') { f.quotaVersata = { $not: { $gt: 0 } }; f.nonIscritto = { $ne: true }; }
-  if (iscrizione === 'noniscritti') { f.quotaVersata = { $not: { $gt: 0 } }; f.nonIscritto = true; }
-  if (admin && tesserato === 'si') f.tesserato = true; // il tesseramento lo vede solo l'admin
-  if (admin && tesserato === 'no') f.tesserato = { $ne: true };
-  if (fratelli === 'si') f.familyId = { $ne: null };
-  if (fratelli === 'no') f.familyId = null;
-  if (q) {
-    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    f.$or = [{ nome: rx }, { cognome: rx }];
+  const s = filtriScelti(req.query, admin);
+  const e = []; // condizioni che devono valere tutte
+  if (!admin) e.push({ trasferito: { $ne: true } });
+  if (s.gruppi.length) {
+    const ids = s.gruppi.filter((x) => x !== 'nessuno' && x !== 'trasferiti');
+    const o = [];
+    if (ids.length) o.push({ gruppo: { $in: ids }, trasferito: { $ne: true } });
+    if (s.gruppi.includes('nessuno')) o.push({ gruppo: null, trasferito: { $ne: true } });
+    if (s.gruppi.includes('trasferiti')) o.push({ trasferito: true });
+    e.push({ $or: o });
   }
-  return f;
+  const nonPagato = { quotaVersata: { $not: { $gt: 0 } } };
+  const STATO = { si: { quotaVersata: { $gt: 0 } }, dacompletare: { ...nonPagato, nonIscritto: { $ne: true } }, noniscritti: { ...nonPagato, nonIscritto: true } };
+  if (s.iscrizione.length && s.iscrizione.length < 3) e.push({ $or: s.iscrizione.map((v) => STATO[v]) });
+  if (s.tesserato.length === 1) e.push({ tesserato: s.tesserato[0] === 'si' ? true : { $ne: true } });
+  if (s.fratelli.length === 1) e.push({ familyId: s.fratelli[0] === 'si' ? { $ne: null } : null });
+  // Come nella pagina: con un filtro su iscrizione o tessera i trasferiti non compaiono
+  if ((s.iscrizione.length || s.tesserato.length) && !s.gruppi.includes('trasferiti')) e.push({ trasferito: { $ne: true } });
+  if (req.query.q) {
+    const rx = new RegExp(String(req.query.q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    e.push({ $or: [{ nome: rx }, { cognome: rx }] });
+  }
+  return e.length ? { $and: e } : {};
+}
+
+// Descrizione dei filtri per PDF ed Excel, es. "da completare o non iscritti, solo tesserati"
+function descrizioneFiltri(req) {
+  const admin = req.user.ruolo === 'admin';
+  const s = filtriScelti(req.query, admin);
+  const nomi = { si: 'iscritti', dacompletare: 'da completare', noniscritti: 'non iscritti' };
+  return [
+    s.iscrizione.length && s.iscrizione.length < 3 ? 'solo ' + s.iscrizione.map((v) => nomi[v]).join(' o ') : '',
+    s.tesserato.length === 1 ? (s.tesserato[0] === 'si' ? 'solo tesserati' : 'solo non tesserati') : '',
+    s.fratelli.length === 1 ? (s.fratelli[0] === 'si' ? 'con fratelli' : 'senza fratelli') : '',
+    req.query.q ? `ricerca "${req.query.q}"` : '',
+  ].filter(Boolean).join(', ');
 }
 
 router.get('/', async (req, res) => {
@@ -65,9 +92,6 @@ router.get('/', async (req, res) => {
   if (!f) return res.json([]);
   res.json(await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 }));
 });
-
-const descrizioneIscrizione = (v) => ({ si: 'solo iscritti', dacompletare: 'solo da completare', noniscritti: 'solo non iscritti' }[v] || '');
-const descrizioneTessera = (v) => ({ si: 'solo tesserati', no: 'solo non tesserati' }[v] || '');
 
 // ---------- PDF degli elenchi (un gruppo per pagina) ----------
 // Per ogni ragazzo elenca i fratelli con il loro gruppo: serve al PDF "con fratelli" e all'Excel dell'admin.
@@ -107,12 +131,7 @@ router.get('/pdf', async (req, res) => {
 
   const dataIt = (d) => (d ? new Date(d).toLocaleDateString('it-IT') : '');
   const euro = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const filtroTesto = [
-    descrizioneIscrizione(req.query.iscrizione),
-    admin ? descrizioneTessera(req.query.tesserato) : '',
-    req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : '',
-    req.query.q ? `ricerca "${req.query.q}"` : '',
-  ].filter(Boolean).join(', ');
+  const filtroTesto = descrizioneFiltri(req);
 
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true, info: { Title: "Elenco ragazzi - ACR Parrocchia Sant'Achille, Molfetta" } });
   res.setHeader('Content-Type', 'application/pdf');
@@ -234,10 +253,10 @@ router.get('/xlsx', async (req, res) => {
   const sezioni = [];
   for (const g of groups) {
     const lista = members.filter((m) => !m.trasferito && String(m.gruppo) === String(g._id));
-    if (lista.length) sezioni.push({ titolo: g.nome, educatori: g.educatori.map((e) => `${e.nome} ${e.cognome}`.trim()), lista });
+    if (lista.length) sezioni.push({ titolo: g.nome, educatori: g.educatori.map((e) => `${e.nome} ${e.cognome}`.trim()), lista, conta: g.contaNelTotale !== false });
   }
   const senza = members.filter((m) => !m.trasferito && !m.gruppo);
-  if (senza.length) sezioni.push({ titolo: 'Senza gruppo', senzaEducatori: true, educatori: [], lista: senza });
+  if (senza.length) sezioni.push({ titolo: 'Senza gruppo', senzaEducatori: true, educatori: [], lista: senza, conta: true });
   const trasf = members.filter((m) => m.trasferito);
   if (admin && trasf.length) sezioni.push({ titolo: 'Trasferiti', senzaEducatori: true, trasferiti: true, educatori: [], lista: trasf });
 
@@ -261,6 +280,7 @@ router.get('/xlsx', async (req, res) => {
   riep.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   riep.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: INK } };
   riep.getColumn('t').numFmt = '"€" #,##0.00';
+  const totale = { n: 0, i: 0, d: 0, x: 0, t: 0 };
 
   for (const s of sezioni) {
     const cols = [
@@ -279,8 +299,7 @@ router.get('/xlsx', async (req, res) => {
     ws.getCell('A1').value = s.titolo;
     ws.getCell('A1').font = { bold: true, size: 14, color: { argb: INK } };
     if (!s.senzaEducatori) ws.getCell('A2').value = 'Educatori: ' + (s.educatori.join(', ') || 'nessuno assegnato');
-    const filtri = [descrizioneIscrizione(req.query.iscrizione), admin ? descrizioneTessera(req.query.tesserato) : '',
-      req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : ''].filter(Boolean).join(', ');
+    const filtri = descrizioneFiltri(req);
     if (filtri) ws.getCell('A3').value = 'Filtri: ' + filtri;
     const head = ws.getRow(4);
     head.values = cols.map((c) => c.t);
@@ -310,10 +329,15 @@ router.get('/xlsx', async (req, res) => {
     if (!s.trasferiti) {
       const pagati = s.lista.filter((m) => m.quotaVersata > 0);
       const nonIscr = s.lista.filter((m) => statoIscrizione(m) === 'Non iscritto').length;
-      riep.addRow({ g: s.titolo, e: s.educatori.join(', '), n: s.lista.length, i: pagati.length, d: s.lista.length - pagati.length - nonIscr,
-        x: nonIscr, t: pagati.reduce((a, m) => a + m.quotaVersata, 0) });
+      const r = { g: s.titolo + (s.conta ? '' : ' (escluso dal totale)'), e: s.educatori.join(', '), n: s.lista.length, i: pagati.length,
+        d: s.lista.length - pagati.length - nonIscr, x: nonIscr, t: pagati.reduce((a, m) => a + m.quotaVersata, 0) };
+      riep.addRow(r);
+      if (s.conta) for (const k of ['n', 'i', 'd', 'x', 't']) totale[k] += r[k];
     }
   }
+  // Riga finale: somma dei soli gruppi che contano nel totale
+  const fine = riep.addRow({ g: 'Totale', ...totale });
+  fine.font = { bold: true };
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="elenco-ragazzi-acr-sant-achille.xlsx"');
@@ -367,13 +391,23 @@ router.post('/:id/non-iscritto', async (req, res) => {
   res.json(m);
 });
 
-// Trasferimento in un'altra parrocchia (educatori e admin): esce dagli elenchi, resta visibile solo agli admin
+// Toglie il ragazzo dalla sua famiglia; se nella famiglia resta una sola persona, il collegamento sparisce
+async function scollegaDaFamiglia(m) {
+  const fid = m.familyId;
+  m.familyId = null;
+  await m.save();
+  if (fid && (await Member.countDocuments({ familyId: fid })) < 2) await Member.updateMany({ familyId: fid }, { familyId: null });
+}
+
+// Trasferimento in un'altra parrocchia (educatori e admin): esce dagli elenchi, resta visibile solo agli admin.
+// Con { scollegaFratelli: true } viene anche tolto dalla famiglia.
 router.post('/:id/trasferisci', async (req, res) => {
   const parrocchia = (req.body.parrocchia || '').trim();
   if (!parrocchia) return res.status(400).json({ message: 'Scrivi il nome della parrocchia di destinazione' });
   const m = req.member;
   m.set({ trasferito: true, parrocchiaTrasferimento: parrocchia, dataTrasferimento: new Date(), gruppoPrecedente: m.gruppo, gruppo: null });
   await m.save();
+  if (req.body.scollegaFratelli === true && m.familyId) await scollegaDaFamiglia(m);
   res.json(m);
 });
 
@@ -398,11 +432,7 @@ router.post('/:id/fratelli', async (req, res) => {
 });
 
 router.delete('/:id/fratelli', async (req, res) => {
-  const m = req.member;
-  const fid = m.familyId;
-  m.familyId = null;
-  await m.save();
-  if (fid && (await Member.countDocuments({ familyId: fid })) < 2) await Member.updateMany({ familyId: fid }, { familyId: null });
+  await scollegaDaFamiglia(req.member);
   res.status(204).end();
 });
 

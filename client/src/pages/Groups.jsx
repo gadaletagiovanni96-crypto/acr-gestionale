@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 
-const VUOTO = { nome: '', descrizione: '', educatori: [] };
+const VUOTO = { nome: '', descrizione: '', educatori: [], contaNelTotale: true };
 
 export default function Groups() {
   const [groups, setGroups] = useState([]);
@@ -13,7 +13,7 @@ export default function Groups() {
     .then(([g, u]) => { setGroups(g); setEducatori(u.filter((x) => x.attivo)); }).catch((e) => setErr(e.message));
   useEffect(() => { carica(); }, []);
 
-  const apri = (g) => { setErr(''); setEdit(g ? { _id: g._id, nome: g.nome, descrizione: g.descrizione, educatori: g.educatori.map((e) => e._id) } : { ...VUOTO }); };
+  const apri = (g) => { setErr(''); setEdit(g ? { _id: g._id, nome: g.nome, descrizione: g.descrizione, educatori: g.educatori.map((e) => e._id), contaNelTotale: g.contaNelTotale !== false } : { ...VUOTO }); };
   const toggle = (id) => setEdit((e) => ({ ...e, educatori: e.educatori.includes(id) ? e.educatori.filter((x) => x !== id) : [...e.educatori, id] }));
 
   const salva = async (ev) => {
@@ -50,6 +50,10 @@ export default function Groups() {
               ))}
             </div>
           </fieldset>
+          <label className="check">
+            <input type="checkbox" checked={edit.contaNelTotale} onChange={(e) => setEdit({ ...edit, contaNelTotale: e.target.checked })} />
+            Conta i ragazzi di questo gruppo nel totale della pagina Ragazzi
+          </label>
           <div className="actions"><button className="primary">Salva gruppo</button><button type="button" className="ghost" onClick={() => setEdit(null)}>Annulla</button></div>
         </form>
       )}
@@ -59,6 +63,7 @@ export default function Groups() {
         {groups.map((g) => (
           <article className="card" key={g._id}>
             <h2>{g.nome}</h2>
+            {g.contaNelTotale === false && <p><span className="chip escluso">Non conteggiato nel totale</span></p>}
             {g.descrizione && <p className="muted">{g.descrizione}</p>}
             <p>{g.educatori.length ? g.educatori.map((e) => `${e.nome} ${e.cognome}`.trim()).join(', ') : <span className="muted">Nessun educatore</span>}</p>
             <div className="actions"><button className="ghost" onClick={() => apri(g)}>Modifica</button><button className="danger ghost" onClick={() => elimina(g)}>Elimina</button></div>

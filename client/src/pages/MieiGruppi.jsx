@@ -1,27 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { api, dataIt, scarica } from '../api';
+import { api, dataIt, scarica, parametriFiltri } from '../api';
+import { SceltaMultipla } from '../components/FiltriMultipli.jsx';
 import { useAuth } from '../auth.jsx';
 
 const STATI = { si: 'Iscritto', dacompletare: 'Da completare', noniscritti: 'Non iscritto' };
+const VUOTI = { iscrizione: [], fratelli: [], q: '' };
 const minuscolo = (s) => String(s || '').toLowerCase();
 // Stesso testo che usa il server: nome, cognome, luogo, via, telefono e nomi dei fratelli
 const testoRicerca = (r) => minuscolo([r.cognome, r.nome, `${r.nome} ${r.cognome}`, r.luogoNascita, r.indirizzo, r.citta, r.telefonoGenitore,
   ...r.fratelli.map((f) => `${f.nome} ${f.cognome}`)].join(' '));
 
-function Scelta({ valore, onChange, opzioni, etichetta }) {
-  return (
-    <div className="segmented" role="radiogroup" aria-label={etichetta}>
-      {opzioni.map(([v, l]) => (
-        <button key={v} type="button" className={valore === v ? 'on' : ''} onClick={() => onChange(v)} role="radio" aria-checked={valore === v}>{l}</button>
-      ))}
-    </div>
-  );
-}
-
 function Contenuto() {
   const [gruppi, setGruppi] = useState(null);
-  const [filtro, setFiltro] = useState({ iscrizione: '', fratelli: '', q: '' });
+  const [filtro, setFiltro] = useState(VUOTI);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState('');
 
@@ -29,12 +21,12 @@ function Contenuto() {
 
   const set = (k) => (v) => setFiltro((f) => ({ ...f, [k]: v }));
   const parole = minuscolo(filtro.q).split(/\s+/).filter(Boolean);
-  const attivi = !!(filtro.iscrizione || filtro.fratelli || parole.length);
+  const attivi = !!(filtro.iscrizione.length || filtro.fratelli.length || parole.length);
 
   const sezioni = useMemo(() => {
     const ok = (r) =>
-      (!filtro.iscrizione || STATI[filtro.iscrizione] === r.stato) &&
-      (!filtro.fratelli || (filtro.fratelli === 'si') === r.fratelli.length > 0) &&
+      (!filtro.iscrizione.length || filtro.iscrizione.some((v) => STATI[v] === r.stato)) &&
+      (filtro.fratelli.length !== 1 || (filtro.fratelli[0] === 'si') === r.fratelli.length > 0) &&
       (!parole.length || parole.every((p) => testoRicerca(r).includes(p)));
     const lista = (gruppi || []).map((g) => ({ ...g, totale: g.ragazzi.length, ragazzi: g.ragazzi.filter(ok) }));
     return attivi ? lista.filter((g) => g.ragazzi.length) : lista;
@@ -46,8 +38,7 @@ function Contenuto() {
   // PDF ed Excel rispettano i filtri attivi
   const esporta = async (tipo) => {
     setErr(''); setBusy(tipo);
-    const p = new URLSearchParams();
-    Object.entries(filtro).forEach(([k, v]) => v && p.set(k, v));
+    const p = parametriFiltri(filtro);
     try { await scarica(`/miei-gruppi/${tipo}?${p}`, `i-miei-gruppi.${tipo}`); } catch (x) { setErr(x.message); }
     setBusy('');
   };
@@ -74,12 +65,12 @@ function Contenuto() {
       {gruppi?.length > 0 && (
         <>
           <div className="filters">
-            <Scelta etichetta="Iscrizione" valore={filtro.iscrizione} onChange={set('iscrizione')}
-              opzioni={[['', 'Tutti'], ['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
-            <Scelta etichetta="Fratelli" valore={filtro.fratelli} onChange={set('fratelli')}
-              opzioni={[['', 'Tutti'], ['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            <SceltaMultipla etichetta="Iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
+            <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
             <input type="search" placeholder="Cerca nome, cognome, via, telefono…" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />
-            {attivi && <button className="ghost" onClick={() => setFiltro({ iscrizione: '', fratelli: '', q: '' })}>Azzera filtri</button>}
+            {attivi && <button className="ghost" onClick={() => setFiltro(VUOTI)}>Azzera filtri</button>}
           </div>
           {attivi && <p className="muted" style={{ marginTop: '-.75rem', marginBottom: '1rem' }}>PDF ed Excel scaricano solo i ragazzi che vedi qui sotto.</p>}
         </>
