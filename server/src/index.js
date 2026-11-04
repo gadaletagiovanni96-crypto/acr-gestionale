@@ -20,6 +20,7 @@ app.use('/api/seasons', require('./routes/seasons'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/miei-gruppi', require('./routes/mieiGruppi'));
+app.use('/api/tesseramento', require('./routes/tesseramento'));
 
 app.get('/api/ping', async (req, res) => {
   try {

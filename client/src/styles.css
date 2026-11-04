@@ -240,3 +240,27 @@ tr.editing { background: #fff6d6; }
   .menu-tendina > button { width: 100%; }
   .menu-lista { left: 0; right: 0; }
 }
+
+.switch-riga { display: flex; align-items: center; gap: .75rem; font-weight: 600; }
+.switch { position: relative; width: 52px; height: 30px; min-height: 0; padding: 0; border: 0; border-radius: 99px; background: #b9c4d0; flex: none; }
+.switch span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.switch.on { background: var(--ok); }
+.switch.on span { transform: translateX(22px); }
+@media (prefers-reduced-motion: no-preference) { .switch, .switch span { transition: background .2s, transform .2s; } }
+@media (max-width: 640px) { .segmented button { white-space: normal; line-height: 1.2; } }  /* i 4 filtri dell'iscrizione vanno a capo */
+
+.tess-scelta { max-width: 460px; margin-bottom: 1.25rem; }
+.tess-riepilogo { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.tess-riepilogo .bar { flex: 1; min-width: 140px; margin-top: 0; }
+.tess-lista { list-style: none; margin: 0; padding: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+.tess-lista li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border-top: 1px solid var(--line); }
+.tess-lista li:first-child { border-top: 0; }
+.tess-lista .nome { font-weight: 600; }
+.tess-lista .fr { color: var(--muted); font-size: .88rem; margin-top: .15rem; }
+.tess-lista .switch-riga { flex: none; }
+.tess-stato { min-width: 6.5rem; font-weight: 400; color: var(--muted); }
+.switch:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 640px) { .tess-lista li { align-items: flex-start; } .tess-stato { min-width: 0; } }
+
+.pericolo { border-color: #e3b9a1; border-left: 6px solid var(--warn); }
+.avviso-pericolo { margin: 0; padding: .7rem .9rem; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn); }

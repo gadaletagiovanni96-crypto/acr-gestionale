@@ -11,6 +11,7 @@ import Anno from './pages/Anno.jsx';
 import Contabilita from './pages/Contabilita.jsx';
 import Evento from './pages/Evento.jsx';
 import MieiGruppi from './pages/MieiGruppi.jsx';
+import Tesseramento from './pages/Tesseramento.jsx';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -31,6 +32,7 @@ function Layout() {
             <NavLink to="/" end>Ragazzi</NavLink>
             {user.ruolo === 'educatore' && <NavLink to="/miei-gruppi">I miei gruppi</NavLink>}
             {(user.ruolo === 'admin' || imp?.iscrizioniAperte !== false) && <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>}
+            {user.ruolo === 'admin' && <NavLink to="/tesseramento">Tesseramento</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
             {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
@@ -64,6 +66,7 @@ export default function App() {
         <Route path="/iscritti/nuovo" element={<MemberForm />} />
         <Route path="/iscritti/:id" element={<MemberForm />} />
         <Route path="/miei-gruppi" element={<MieiGruppi />} />
+        <Route path="/tesseramento" element={<Tesseramento />} />
         <Route element={<Private admin />}>
           <Route path="/gruppi" element={<Groups />} />
           <Route path="/educatori" element={<Users />} />

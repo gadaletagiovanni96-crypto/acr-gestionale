@@ -48,7 +48,8 @@ export default function Members() {
     const q = filtro.q.trim().toLowerCase();
     const nomeOk = (m) => !q || `${m.nome} ${m.cognome}`.toLowerCase().includes(q);
     const fratelliOk = (m) => !filtro.fratelli || (filtro.fratelli === 'si') === !!m.familyId;
-    const ok = (m) => (!filtro.iscrizione || (filtro.iscrizione === 'si') === m.iscritto) && fratelliOk(m) && nomeOk(m);
+    const statoOk = (m) => !filtro.iscrizione || (filtro.iscrizione === 'nontess' ? !m.tesserato : (filtro.iscrizione === 'si') === m.iscritto);
+    const ok = (m) => statoOk(m) && fratelliOk(m) && nomeOk(m);
     const lista = [...groups.map((g) => ({ id: g._id, nome: g.nome, educatori: g.educatori })), { id: 'nessuno', nome: 'Senza gruppo', educatori: [] }]
       .filter((s) => !filtro.gruppo || filtro.gruppo === s.id)
       .map((s) => {
@@ -104,7 +105,7 @@ export default function Members() {
         ricerca={<input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />}
       >
         <div className="segmented" role="radiogroup" aria-label="Stato iscrizione">
-          {[['', 'Tutti'], ['si', 'Iscritti'], ['no', 'Non ancora iscritti']].map(([v, l]) => (
+          {[['', 'Tutti'], ['si', 'Iscritti'], ['no', 'Non ancora iscritti'], ...(admin ? [['nontess', 'Non tesserati']] : [])].map(([v, l]) => (
             <button key={v} className={filtro.iscrizione === v ? 'on' : ''} onClick={() => set('iscrizione')(v)} role="radio" aria-checked={filtro.iscrizione === v}>{l}</button>
           ))}
         </div>
@@ -157,6 +158,7 @@ export default function Members() {
                       <span className="name">{m.cognome} {m.nome}</span>
                       <span className="muted">{eta(m.dataNascita)} anni</span>
                       {m.familyId && <span className="chip sib">Fratelli</span>}
+                      {admin && !tr && <span className={`chip ${m.tesserato ? 'ok' : 'sib'}`}>{m.tesserato ? 'Tesserato' : 'Non tesserato'}</span>}
                       {tr ? (
                         <span className="chip sib">{m.parrocchiaTrasferimento} · {dataIt(m.dataTrasferimento)}</span>
                       ) : (

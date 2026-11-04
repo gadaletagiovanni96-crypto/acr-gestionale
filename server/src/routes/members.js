@@ -24,11 +24,12 @@ const CAMPI = ['nome', 'cognome', 'sesso', 'dataNascita', 'luogoNascita', 'codic
   'telefono', 'email', 'nomeGenitore', 'telefonoGenitore', 'emailGenitore', 'allergie', 'note', 'consensoPrivacy',
   'gruppo', 'quotaVersata', 'dataVersamento'];
 
-function pulisci(body) {
+function pulisci(body, admin = false) {
   const d = {};
   for (const k of CAMPI) if (k in body) d[k] = body[k];
   for (const k of ['gruppo', 'dataVersamento', 'dataNascita']) if (d[k] === '') d[k] = null;
   if ('quotaVersata' in d && (d.quotaVersata === '' || d.quotaVersata == null)) d.quotaVersata = 0;
+  if (admin && 'tesserato' in body) d.tesserato = body.tesserato === true; // il tesseramento lo gestisce solo l'admin
   return d;
 }
 
@@ -45,6 +46,7 @@ function filtroDa(req) {
   else if (gruppo) f.gruppo = gruppo;
   if (iscrizione === 'si') f.quotaVersata = { $gt: 0 };
   if (iscrizione === 'no') f.quotaVersata = { $not: { $gt: 0 } };
+  if (iscrizione === 'nontess' && admin) f.tesserato = { $ne: true }; // solo admin: ragazzi non tesserati
   if (fratelli === 'si') f.familyId = { $ne: null };
   if (fratelli === 'no') f.familyId = null;
   if (q) {
@@ -60,6 +62,9 @@ router.get('/', async (req, res) => {
   res.json(await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 }));
 });
 
+// ---------- PDF degli elenchi (un gruppo per pagina) ----------
+// Per ogni ragazzo elenca i fratelli con il loro gruppo: serve al PDF "con fratelli" e all'Excel dell'admin.
+// Restituisce una funzione: ragazzo -> lista di testi come "Anna Rossi (III elementare)".
 async function aggiungiFratelli(members) {
   const famiglie = [...new Set(members.map((m) => m.familyId).filter(Boolean).map(String))];
   const parenti = famiglie.length
@@ -72,18 +77,16 @@ async function aggiungiFratelli(members) {
     .map((p) => `${p.nome} ${p.cognome} (${p.trasferito ? 'Trasferito' : p.gruppo?.nome || 'Senza gruppo'})`);
 }
 
-// ---------- PDF degli elenchi (un gruppo per pagina) ----------
 router.get('/pdf', async (req, res) => {
+  const { annoAssociativo } = await leggiImpostazioni();
   const admin = req.user.ruolo === 'admin';
-  const conFratelli = admin && req.query.conFratelli === '1';
+  const conFratelli = admin && req.query.conFratelli === '1'; // solo admin: PDF con la colonna dei fratelli
   const f = filtroDa(req);
   const [members, groups] = await Promise.all([
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
   ]);
   const fratelliDi = conFratelli ? await aggiungiFratelli(members) : null;
-
-  const { annoAssociativo } = await leggiImpostazioni();
 
   const sezioni = [];
   for (const g of groups) {
@@ -98,7 +101,7 @@ router.get('/pdf', async (req, res) => {
   const dataIt = (d) => (d ? new Date(d).toLocaleDateString('it-IT') : '');
   const euro = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const filtroTesto = [
-    req.query.iscrizione === 'si' ? 'solo iscritti' : req.query.iscrizione === 'no' ? 'solo non ancora iscritti' : '',
+    req.query.iscrizione === 'si' ? 'solo iscritti' : req.query.iscrizione === 'no' ? 'solo non ancora iscritti' : req.query.iscrizione === 'nontess' ? 'solo non tesserati' : '',
     req.query.fratelli === 'si' ? 'con fratelli' : req.query.fratelli === 'no' ? 'senza fratelli' : '',
     req.query.q ? `ricerca "${req.query.q}"` : '',
   ].filter(Boolean).join(', ');
@@ -110,7 +113,7 @@ router.get('/pdf', async (req, res) => {
 
   const W = doc.page.width, H = doc.page.height, L = 40, TW = W - 80, MIN = 24, FS = conFratelli ? 9 : 10;
   const INK = '#17324d', MUTED = '#5d6c7b';
-  const ROSSO = '#fde4e1';
+  const ROSSO = '#fde4e1'; // rosso leggero per i ragazzi non ancora iscritti
   const oggi = new Date().toLocaleDateString('it-IT');
   // Larghezze pensate per A4 orizzontale (762 pt utili): nessun testo viene troncato, va a capo
   let COL_N = [{ t: 'N.', w: 24 }, { t: 'Cognome', w: 115 }, { t: 'Nome', w: 105 }, { t: 'Data di nascita', w: 78 },
@@ -119,14 +122,15 @@ router.get('/pdf', async (req, res) => {
     { t: 'Luogo di nascita', w: 110 }, { t: 'Via', w: 120 }, { t: 'Telefono genitore', w: 100 }, { t: 'Trasferito a', w: 130 }];
   if (conFratelli) { // con la colonna dei fratelli le altre si restringono (la somma resta 762)
     COL_N = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 80 }, { t: 'Nome', w: 70 }, { t: 'Data di nascita', w: 62 },
-      { t: 'Luogo di nascita', w: 82 }, { t: 'Via', w: 120 }, { t: 'Telefono genitore', w: 82 }, { t: 'Fratelli', w: 244 }];
+      { t: 'Luogo di nascita', w: 82 }, { t: 'Via', w: 120 }, { t: 'Telefono genitore', w: 82 }, { t: 'Fratelli', w: 188 }, { t: 'Tesserato', w: 56 }];
     COL_T = [{ t: 'N.', w: 22 }, { t: 'Cognome', w: 72 }, { t: 'Nome', w: 62 }, { t: 'Data di nascita', w: 60 },
-      { t: 'Luogo di nascita', w: 74 }, { t: 'Via', w: 100 }, { t: 'Telefono genitore', w: 76 }, { t: 'Trasferito a', w: 96 }, { t: 'Fratelli', w: 200 }];}
+      { t: 'Luogo di nascita', w: 74 }, { t: 'Via', w: 100 }, { t: 'Telefono genitore', w: 76 }, { t: 'Trasferito a', w: 96 }, { t: 'Fratelli', w: 144 }, { t: 'Tesserato', w: 56 }];
+  }
   let prima = true;
 
   const intestazione = () => {
     doc.rect(0, 0, W, 58).fill(INK);
-    const tx = disegnaMarchio(doc, L);
+    const tx = disegnaMarchio(doc, L); // logo (o pallino giallo) e posizione del titolo
     doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text("ACR · Parrocchia Sant'Achille", tx, 17, { lineBreak: false });
     doc.font('Helvetica').fontSize(9).text('Molfetta · Elenco ragazzi', tx, 36, { lineBreak: false });
     scriviAnnoEData(doc, L, TW, annoAssociativo, oggi); // "Anno associativo ..." e data a destra
@@ -146,6 +150,7 @@ router.get('/pdf', async (req, res) => {
     doc.moveTo(L, y + rh).lineTo(L + TW, y + rh).lineWidth(0.5).strokeColor('#dbe1e8').stroke();
   };
 
+  // Piccola legenda: il rosso chiaro indica chi non ha ancora completato l'iscrizione
   const legenda = () => {
     const ly = doc.y + 6;
     doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
@@ -178,7 +183,7 @@ router.get('/pdf', async (req, res) => {
       const celle = [i + 1, m.cognome, m.nome, dataIt(m.dataNascita), m.luogoNascita || '—',
         [m.indirizzo, m.citta].filter(Boolean).join(', ') || '—', m.telefonoGenitore || '—'];
       if (s.trasferiti) celle.push(`${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + dataIt(m.dataTrasferimento) + ')' : ''}`);
-      if (conFratelli) celle.push(fratelliDi(m).join('\n') || '—');
+      if (conFratelli) { celle.push(fratelliDi(m).join('\n') || '—'); celle.push(m.tesserato ? 'Sì' : 'No'); } // ultima colonna: tesserato
       const rh = altezza(celle, cols, false);
       if (y + rh > H - 50) y = iniziaPagina(s, true);
       const nonIscritto = !s.trasferiti && !(m.quotaVersata > 0);
@@ -201,6 +206,7 @@ router.get('/pdf', async (req, res) => {
   doc.end();
 });
 
+// ---------- Foglio di calcolo Excel (un foglio per gruppo) ----------
 router.get('/xlsx', async (req, res) => {
   const admin = req.user.ruolo === 'admin';
   const f = filtroDa(req);
@@ -208,7 +214,7 @@ router.get('/xlsx', async (req, res) => {
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
   ]);
-  const fratelliDi = admin ? await aggiungiFratelli(members) : null;
+  const fratelliDi = admin ? await aggiungiFratelli(members) : null; // l'Excel dell'admin ha sempre i fratelli
 
   const sezioni = [];
   for (const g of groups) {
@@ -250,6 +256,7 @@ router.get('/xlsx', async (req, res) => {
     ];
     if (s.trasferiti) cols.push({ k: 'trasf', t: 'Trasferito a', w: 28 });
     if (admin) cols.push({ k: 'fratelli', t: 'Fratelli (nome, cognome e gruppo)', w: 52 });
+    if (admin) cols.push({ k: 'tess', t: 'Tesserato', w: 12 }); // ultima colonna
 
     const ws = wb.addWorksheet(nomeFoglio(s.titolo));
     ws.columns = cols.map((c) => ({ key: c.k, width: c.w }));
@@ -270,8 +277,9 @@ router.get('/xlsx', async (req, res) => {
         stato: pagato ? 'Iscritto' : 'Da completare', quota: pagato ? m.quotaVersata : null, dataV: pagato ? m.dataVersamento : null,
         trasf: s.trasferiti ? `${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + new Date(m.dataTrasferimento).toLocaleDateString('it-IT') + ')' : ''}` : undefined,
         fratelli: admin ? fratelliDi(m).join('; ') : undefined,
+        tess: admin ? (m.tesserato ? 'Sì' : 'No') : undefined,
       });
-      if (admin) fila.getCell(cols.length).alignment = { wrapText: true, vertical: 'top' }; // la colonna dei fratelli è l'ultima
+      if (admin) fila.getCell(cols.length - 1).alignment = { wrapText: true, vertical: 'top' }; // la colonna dei fratelli è la penultima
     });
     ws.getColumn('nascita').numFmt = 'dd/mm/yyyy';
     ws.getColumn('dataV').numFmt = 'dd/mm/yyyy';
@@ -296,7 +304,7 @@ router.get('/:id', async (req, res) => {
   const m = req.member;
   const fratelli = m.familyId
     ? await Member.find({ familyId: m.familyId, _id: { $ne: m._id }, ...(req.user.ruolo === 'admin' ? {} : { trasferito: { $ne: true } }) })
-        .select('nome cognome dataNascita').sort({ dataNascita: 1 })
+        .select('nome cognome dataNascita tesserato').sort({ dataNascita: 1 })
     : [];
   res.json({ ...m.toJSON(), fratelli });
 });
@@ -305,16 +313,17 @@ router.post('/', async (req, res) => {
   // Se l'admin ha chiuso le iscrizioni, gli educatori non possono registrare nuovi ragazzi
   if (req.user.ruolo !== 'admin' && !(await leggiImpostazioni()).iscrizioniAperte)
     return res.status(403).json({ message: "Le iscrizioni sono chiuse: al momento solo l'amministratore può registrare nuovi ragazzi." });
-  res.status(201).json(await Member.create({ ...pulisci(req.body), creatoDa: req.user._id }));
+  res.status(201).json(await Member.create({ ...pulisci(req.body, req.user.ruolo === 'admin'), creatoDa: req.user._id }));
 });
-
-
 
 // Tutti gli educatori possono modificare qualsiasi scheda
 router.put('/:id', async (req, res) => {
   const m = req.member;
-  m.set(pulisci(req.body));
+  m.set(pulisci(req.body, req.user.ruolo === 'admin'));
   await m.save();
+  // L'admin ha risposto "sì" alla domanda: tessera anche i fratelli collegati
+  if (req.user.ruolo === 'admin' && req.body.tesseraFratelli === true && m.tesserato && m.familyId)
+    await Member.updateMany({ familyId: m.familyId, _id: { $ne: m._id }, trasferito: { $ne: true } }, { tesserato: true });
   res.json(m);
 });
 

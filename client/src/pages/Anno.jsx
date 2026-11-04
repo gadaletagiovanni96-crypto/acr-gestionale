@@ -81,6 +81,7 @@ function Impostazioni() {
   };
 
   if (!imp) return err ? <p className="error">{err}</p> : null;
+  
   return (
     <>
       <section className="card stack" style={{ marginBottom: '1.25rem' }}>
@@ -113,6 +114,42 @@ function Impostazioni() {
   );
 }
 
+function AzzeraTesseramenti({ tesserati, onFatto }) {
+  const [conferma, setConferma] = useState('');
+  const [err, setErr] = useState('');
+  const [ok, setOk] = useState('');
+
+  const azzera = async (e) => {
+    e.preventDefault(); setErr(''); setOk('');
+    if (!confirm(`ATTENZIONE: stai per togliere il tesseramento a ${tesserati} ragazzi di tutti i gruppi.\n\nL'operazione NON si può annullare.\n\nVuoi davvero continuare?`)) return;
+    try {
+      const r = await api.post('/seasons/azzera-tesseramenti');
+      setOk(`Fatto: il tesseramento è stato tolto a ${r.azzerati} ragazzi.`);
+      setConferma('');
+      onFatto();
+    } catch (x) { setErr(x.message); }
+  };
+
+  const pronto = conferma.trim().toUpperCase() === 'AZZERA' && tesserati > 0;
+
+  return (
+    <form className="card stack pericolo" onSubmit={azzera} style={{ marginTop: '2rem', marginBottom: '1.25rem' }}>
+      <h2>Azzera tutti i tesseramenti</h2>
+      <p className="avviso-pericolo">
+        <strong>Attenzione, operazione pericolosa.</strong> Il tesseramento viene tolto a <strong>tutti</strong> i ragazzi, in tutti i gruppi
+        (anche ai trasferiti). Non si può annullare e non ne resta uno storico. Le iscrizioni e le quote non vengono toccate.
+      </p>
+      <p>{tesserati > 0 ? <>Al momento i ragazzi tesserati sono <strong>{tesserati}</strong>.</> : 'Al momento nessun ragazzo è tesserato.'}</p>
+      <label>Per confermare scrivi AZZERA
+        <input value={conferma} onChange={(e) => setConferma(e.target.value)} placeholder="AZZERA" autoComplete="off" disabled={!tesserati} />
+      </label>
+      {err && <p className="error" role="alert">{err}</p>}
+      {ok && <p className="success" role="status">{ok}</p>}
+      <div className="actions"><button type="submit" className="danger" disabled={!pronto}>Togli il tesseramento a tutti</button></div>
+    </form>
+  );
+}
+
 export default function Anno() {
   const [dati, setDati] = useState(null);
   const [nome, setNome] = useState('');
@@ -137,10 +174,10 @@ export default function Anno() {
   return (
     <>
       <div className="page-head">
-        <div><h1>Nuovo anno</h1><p className="muted">Archivia le quote dell'anno concluso, poi fai passare i ragazzi al gruppo successivo.</p></div>
+        <div><h1>Gestione Anno</h1><p className="muted">Archivia le quote dell'anno concluso, fai passare i ragazzi al gruppo successivo e gestisci le impostazioni generali.</p></div>
       </div>
       
-      <form className="card stack" onSubmit={chiudi}>
+      <form className="card stack" onSubmit={chiudi} style={{ marginBottom: '1.25rem' }}>
         <h2>Archivia l'anno e azzera le iscrizioni</h2>
         <div className="stats">
           <div><strong>{dati.corrente.iscritti}</strong> iscrizioni completate</div>
@@ -155,6 +192,8 @@ export default function Anno() {
         <div className="actions"><button className="danger" disabled={!dati.corrente.iscritti}>Archivia l'anno e azzera le iscrizioni</button></div>
       </form>
 
+      <AzzeraTesseramenti tesserati={dati.corrente.tesserati || 0} onFatto={carica} />
+      
       <Impostazioni />
 
       <Passaggio />

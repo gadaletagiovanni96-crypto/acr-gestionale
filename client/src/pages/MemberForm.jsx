@@ -7,7 +7,7 @@ import { useImpostazioni } from '../impostazioni';
 const VUOTO = {
   nome: '', cognome: '', sesso: '', dataNascita: '', luogoNascita: '', codiceFiscale: '', indirizzo: '', citta: '', cap: '',
   telefono: '', email: '', nomeGenitore: '', telefonoGenitore: '', emailGenitore: '', allergie: '', note: '',
-  consensoPrivacy: false, gruppo: '', quotaVersata: '', dataVersamento: '',
+  consensoPrivacy: false, gruppo: '', quotaVersata: '', dataVersamento: '', tesserato: false,
 };
 const giorno = (d) => (d ? String(d).slice(0, 10) : '');
 
@@ -83,11 +83,13 @@ export default function MemberForm() {
   const [ok, setOk] = useState(state?.ok || '');
   const [busy, setBusy] = useState(false);
   const [trasf, setTrasf] = useState('');
+  const [tesseraFratelli, setTesseraFratelli] = useState(false); // l'admin ha scelto di tesserare anche i fratelli
 
   const carica = () =>
     api.get(`/members/${id}`).then((m) => {
       setF({ ...VUOTO, ...m, dataNascita: giorno(m.dataNascita), dataVersamento: giorno(m.dataVersamento), gruppo: m.gruppo || '', quotaVersata: m.quotaVersata || '' });
       setFratelli(m.fratelli);
+      setTesseraFratelli(false);
     }).catch((e) => setErr(e.message));
 
   useEffect(() => { api.get('/groups').then(setGroups).catch(() => {}); }, []);
@@ -98,12 +100,28 @@ export default function MemberForm() {
   const salva = async (e) => {
     e.preventDefault();
     setErr(''); setOk(''); setBusy(true);
-    const payload = { ...f, quotaVersata: f.quotaVersata === '' ? 0 : Number(f.quotaVersata) };
+    const payload = { ...f, quotaVersata: f.quotaVersata === '' ? 0 : Number(f.quotaVersata), tesseraFratelli };
     try {
-      if (id) { await api.put(`/members/${id}`, payload); setOk('Modifiche salvate.'); await carica(); }
+      if (id) { await api.put(`/members/${id}`, payload); setOk(tesseraFratelli ? 'Modifiche salvate. Anche i fratelli collegati sono stati tesserati.' : 'Modifiche salvate.'); await carica(); }
       else { const m = await api.post('/members', payload); nav(`/iscritti/${m._id}`, { state: { ok: 'Iscrizione registrata. Se ha dei fratelli puoi collegarli qui sotto.' } }); }
     } catch (x) { setErr(x.message); }
     setBusy(false);
+  };
+
+  // Interruttore "Tesserato". Se si accende e ci sono fratelli collegati non ancora tesserati, chiede se tesserarli tutti.
+  // La scelta viene registrata quando si preme "Salva modifiche".
+  const cambiaTessera = () => {
+    const nuovo = !f.tesserato;
+    setF((x) => ({ ...x, tesserato: nuovo }));
+    setTesseraFratelli(false);
+    if (!nuovo || !id) return;
+    const daTesserare = fratelli.filter((fr) => !fr.tesserato);
+    if (!daTesserare.length) return;
+    const nomi = daTesserare.map((fr) => `${fr.nome} ${fr.cognome}`).join(', ');
+    const domanda = daTesserare.length === 1
+      ? `Attenzione: c'è un fratello collegato non ancora tesserato (${nomi}).\n\nVuoi tesserare anche lui?`
+      : `Attenzione: ci sono ${daTesserare.length} fratelli collegati non ancora tesserati (${nomi}).\n\nVuoi tesserare anche loro?`;
+    if (confirm(`${domanda}\n\nVerrà registrato quando salvi la scheda.`)) setTesseraFratelli(true);
   };
 
   const trasferisci = async () => {
@@ -181,6 +199,7 @@ export default function MemberForm() {
             <Campo label="Gruppo" wide>
               <select value={f.gruppo} onChange={set('gruppo')}>
                 <option value="">Nessun gruppo</option>
+                <option value="ID_DEL_GRUPPO">Nome del gruppo</option>
                 {groups.map((g) => <option key={g._id} value={g._id}>{labelGruppo(g)}</option>)}
               </select>
             </Campo>
@@ -189,6 +208,8 @@ export default function MemberForm() {
           </div>
           <p className="hint">L'iscrizione risulta completata quando è stata versata una quota.</p>
         </fieldset>
+
+
 
         <fieldset className="card">
           <legend>Salute, note e privacy</legend>
@@ -219,6 +240,15 @@ export default function MemberForm() {
       </form>
 
       {id && <Fratelli id={id} fratelli={fratelli} onChange={carica} />}
+      {id && <fieldset className="card">
+            <legend>Tesseramento</legend>
+            <div className="switch-riga">
+              <button type="button" role="switch" aria-checked={!!f.tesserato} aria-label="Tesserato" className={`switch${f.tesserato ? ' on' : ''}`} onClick={cambiaTessera}><span /></button>
+              <span>{f.tesserato ? 'Tesserato' : 'Non tesserato'}</span>
+            </div>
+            <p className="hint">Se ci sono fratelli collegati non ancora tesserati, quando accendi l'interruttore ti verrà chiesto se tesserare anche loro.</p>
+            <p className='hint'>Chiedo al Parroco di raccogliere la quota dell'adesione prima di segnare il tesseramento e di consegnarla al responsabile.</p>
+          </fieldset>}
 
       {id && !f.trasferito && (
         <section className="card" style={{ marginTop: '1rem' }}>

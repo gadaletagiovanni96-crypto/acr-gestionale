@@ -22,6 +22,7 @@ const memberSchema = new Schema(
     allergie: { type: String, trim: true, default: '' },
     note: { type: String, trim: true, default: '' },
     consensoPrivacy: { type: Boolean, default: false },
+    tesserato: { type: Boolean, default: false },
     // Gruppo e quota
     gruppo: { type: Schema.Types.ObjectId, ref: 'Group', default: null },
     quotaVersata: { type: Number, min: [0, 'La quota non può essere negativa'], default: 0 },
