@@ -165,7 +165,7 @@ export default function ContabilitaTessere() {
               </div>
             </header>
 
-            <h3>Pagate ai maggiori</h3>
+            <h3>Pagate nel gruppo</h3>
             {TIPI.map((t) => (
               <div className="tess-voce" key={t}>
                 <span className="chip sib">{euro(prezzi[t])}{vale[t] > 1 ? ` · vale ${vale[t]}` : ''}</span>
