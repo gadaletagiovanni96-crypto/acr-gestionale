@@ -12,6 +12,7 @@ import Contabilita from './pages/Contabilita.jsx';
 import Evento from './pages/Evento.jsx';
 import MieiGruppi from './pages/MieiGruppi.jsx';
 import Tesseramento from './pages/Tesseramento.jsx';
+import ContabilitaTessere from './pages/ContabilitaTessere.jsx';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -66,10 +67,11 @@ export default function App() {
         <Route path="/iscritti/nuovo" element={<MemberForm />} />
         <Route path="/iscritti/:id" element={<MemberForm />} />
         <Route path="/miei-gruppi" element={<MieiGruppi />} />
-        <Route path="/tesseramento" element={<Tesseramento />} />
         <Route element={<Private admin />}>
           <Route path="/gruppi" element={<Groups />} />
           <Route path="/educatori" element={<Users />} />
+          <Route path="/tesseramento" element={<Tesseramento />} />
+          <Route path="/tesseramento/contabilita" element={<ContabilitaTessere />} />
           <Route path="/anno" element={<Anno />} />
           <Route path="/contabilita" element={<Contabilita />} />
           <Route path="/contabilita/:id" element={<Evento />} />
