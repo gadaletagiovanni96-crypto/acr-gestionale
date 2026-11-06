@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, eta, labelGruppo } from '../api';
+import SottomenuTesseramento from '../components/SottomenuTesseramento.jsx';
 
 export default function Tesseramento() {
   const [gruppi, setGruppi] = useState([]);
@@ -54,6 +55,7 @@ export default function Tesseramento() {
       <div className="page-head">
         <div><h1>Tesseramento</h1><p className="muted">Scegli un gruppo e accendi l'interruttore accanto a chi è tesserato. Ogni modifica si salva subito.</p><p>Accendere l'interruttore solo se la quota viene effettivamente consegnata (se sono presenti fratelli flaggare direttamente al fratello più grande)</p></div>
       </div>
+      <SottomenuTesseramento />
 
       <label className="tess-scelta">Gruppo
         <select value={gruppo} onChange={(e) => setGruppo(e.target.value)}>

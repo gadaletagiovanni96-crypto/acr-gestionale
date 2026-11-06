@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Group = require('../models/Group');
 const Member = require('../models/Member');
+const ProspettoTessere = require('../models/ProspettoTessere');
 const { auth, soloAdmin } = require('../middleware/auth');
 
 router.use(auth);
@@ -58,6 +59,7 @@ router.delete('/:id', soloAdmin, async (req, res) => {
   const g = await Group.findByIdAndDelete(req.params.id);
   if (!g) return res.status(404).json({ message: 'Gruppo non trovato' });
   await Member.updateMany({ gruppo: g._id }, { gruppo: null }); // i ragazzi restano, senza gruppo
+  await ProspettoTessere.deleteOne({ gruppo: g._id });
   res.status(204).end();
 });
 
