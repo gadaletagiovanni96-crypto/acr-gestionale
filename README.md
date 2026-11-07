@@ -33,6 +33,11 @@ cd ../server && npm install && npm start   # serve API e frontend dalla porta 40
 - **Login**: scelta del tipo di account (Educatore / Admin); il server verifica che coincida con quello dell'utente.
 - **Educatori**: registrano nuove iscrizioni, consultano l'elenco, collegano i fratelli e possono modificare tutti i dati e le iscrizioni di qualsiasi ragazzo.
 - **Admin**: può eliminare iscrizioni, creare gruppi (nome + educatori) e gestire gli account.
+- **Parroco**: vede *Ragazzi*, *Nuova iscrizione* (anche quando le iscrizioni sono chiuse), *Gruppi*, *Educatori & Account* e *Contabilità*.
+  - Nella pagina Ragazzi non vede il tesseramento né i ragazzi *Non iscritti*. Filtri: Tutti / Iscritti / Da completare e Tutti / Con fratelli / Senza fratelli (una scelta per riga), gruppi come l'admin (senza i trasferiti) e ricerca. I filtri restano quando si torna all'elenco.
+  - PDF ed Excel sono quelli dell'admin (anche PDF con fratelli, colonna Tesserato e trasferiti), ma nel PDF non compaiono i non iscritti.
+  - Nella scheda del ragazzo non vede il tesseramento e non ha il pulsante *Non si iscrive*; può eliminare l'iscrizione.
+  - Crea, modifica ed elimina gruppi. Crea, modifica ed elimina solo account di educatori; può cambiare i propri dati ma non il proprio tipo di account. Solo l'admin crea parroci o admin.
 - **Nuovo anno** (solo admin): archivia quota e data di versamento nello storico di ogni ragazzo («Anni precedenti»), registra la chiusura (anno, iscritti, totale incassato) e azzera le iscrizioni. Anagrafica, gruppi e fratelli non cambiano. L'operazione non è annullabile.
 - **Passaggio di gruppo** (solo admin, pagina *Nuovo anno*): per ogni gruppo scegli il gruppo di destinazione di tutti i suoi ragazzi. Più passaggi insieme (II → III, III → IV) non si sovrappongono.
 - **Trasferimenti**: dalla scheda, un educatore o l'admin scrive il nome della parrocchia e preme *Trasferisci*. Il ragazzo esce dagli elenchi e compare solo agli admin nella sezione *Trasferiti in altre parrocchie*, dove l'admin può anche riportarlo in parrocchia.

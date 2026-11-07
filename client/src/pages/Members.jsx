@@ -33,11 +33,13 @@ export default function Members() {
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [filtroScelto, setFiltro] = useState(filtriSalvati);
-  // Il parroco ha solo due filtri, a scelta singola: Tutti / Iscritti / Da completare e Tutti / Con fratelli / Senza fratelli
+  // Il parroco: iscrizione e fratelli a scelta singola (Tutti / Iscritti / Da completare, Tutti / Con / Senza fratelli),
+  // gruppi come l'admin ma senza i trasferiti, niente tesseramento
   const filtro = useMemo(() => (parroco ? {
-    ...FILTRI_VUOTI, q: filtroScelto.q,
+    ...filtroScelto, tesserato: [],
     iscrizione: filtroScelto.iscrizione.length === 1 && filtroScelto.iscrizione[0] !== 'noniscritti' ? filtroScelto.iscrizione : [],
     fratelli: filtroScelto.fratelli.length === 1 ? filtroScelto.fratelli : [],
+    gruppo: filtroScelto.gruppo.filter((v) => v !== 'trasferiti'),
   } : filtroScelto), [filtroScelto, parroco]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,8 @@ export default function Members() {
               opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare']]} />
             <SceltaSingola etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
               opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+              opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo']]} />
           </>
         ) : (
           <>
