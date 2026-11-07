@@ -132,6 +132,7 @@ export default function Members() {
       </div>
       {iscrizioniChiuse && <p className="notice" style={{ marginBottom: '1rem' }}>Le iscrizioni di nuovi ragazzi sono chiuse al momento. Solo il parroco o il responsabile possono aggiungere nuovi iscritti.</p>}
       <PannelloFiltri
+        colonne={parroco ? 3 : 2}
         badge={[filtro.iscrizione, filtro.tesserato, filtro.fratelli, filtro.gruppo].filter((v) => v.length).length}
         onAzzera={filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || filtro.gruppo.length || filtro.q
           ? () => setFiltro(FILTRI_VUOTI) : null}

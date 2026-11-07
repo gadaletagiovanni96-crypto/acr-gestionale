@@ -52,8 +52,8 @@ export function GruppiMultipli({ valori, onChange, opzioni }) {
 
   return (
     <div className="menu-tendina gruppi-multipli" ref={rif}>
-      <button type="button" className="ghost" aria-haspopup="true" aria-expanded={aperto} onClick={() => setAperto(!aperto)}>
-        {testo} <span aria-hidden="true">▾</span>
+      <button type="button" className="ghost" aria-haspopup="true" aria-expanded={aperto} title={testo} onClick={() => setAperto(!aperto)}>
+        <span className="testo">{testo}</span> <span aria-hidden="true">▾</span>
       </button>
       {aperto && (
         <div className="menu-lista caselle">
