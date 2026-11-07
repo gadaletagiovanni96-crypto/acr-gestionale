@@ -3,9 +3,13 @@ import { api } from '../api';
 import { useAuth } from '../auth.jsx';
 
 const VUOTO = { nome: '', cognome: '', email: '', password: '', ruolo: 'educatore', attivo: true };
+const NOMI = { admin: 'Admin', parroco: 'Parroco', educatore: 'Educatore' };
 
 export default function Users() {
   const { user: me } = useAuth();
+  const admin = me.ruolo === 'admin';
+  // Il parroco gestisce solo gli educatori e il proprio account
+  const modificabile = (u) => admin || u.ruolo === 'educatore' || u._id === me._id;
   const [users, setUsers] = useState([]);
   const [edit, setEdit] = useState(null);
   const [err, setErr] = useState('');
@@ -29,7 +33,7 @@ export default function Users() {
   return (
     <>
       <div className="page-head">
-        <div><h1>Educatori & Account</h1><p className="muted">Aggiungi, modifica o rimuovi gli account di educatori e amministratori.</p></div>
+        <div><h1>Educatori & Account</h1><p className="muted">{admin ? 'Aggiungi, modifica o rimuovi gli account di educatori, parroco e amministratori.' : 'Aggiungi, modifica o rimuovi gli account degli educatori.'}</p></div>
         {!edit && <button className="primary" onClick={() => { setErr(''); setEdit({ ...VUOTO }); }}>Nuovo Educatore</button>}
       </div>
       {err && <p className="error">{err}</p>}
@@ -44,9 +48,15 @@ export default function Users() {
             <label>{edit._id ? 'Nuova password (lascia vuoto per non cambiarla)' : 'Password (min. 8 caratteri)'}
               <input type="password" minLength={8} value={edit.password} onChange={set('password')} required={!edit._id} autoComplete="new-password" />
             </label>
-            <label>Tipo di account
-              <select value={edit.ruolo} onChange={set('ruolo')} disabled={edit._id === me._id}><option value="educatore">Educatore</option><option value="admin">Admin</option></select>
-            </label>
+            {admin ? (
+              <label>Tipo di account
+                <select value={edit.ruolo} onChange={set('ruolo')} disabled={edit._id === me._id}>
+                  <option value="educatore">Educatore</option><option value="parroco">Parroco</option><option value="admin">Admin</option>
+                </select>
+              </label>
+            ) : (
+              <label>Tipo di account<input value={NOMI[edit.ruolo]} disabled /></label>
+            )}
             <label className="check"><input type="checkbox" checked={edit.attivo} onChange={set('attivo')} disabled={edit._id === me._id} /> Account attivo</label>
           </div>
           <div className="actions"><button className="primary">Salva account</button><button type="button" className="ghost" onClick={() => setEdit(null)}>Annulla</button></div>
@@ -61,11 +71,11 @@ export default function Users() {
               <tr key={u._id}>
                 <td>{u.nome} {u.cognome}</td>
                 <td>{u.email}</td>
-                <td>{u.ruolo === 'admin' ? 'Admin' : 'Educatore'}</td>
+                <td>{NOMI[u.ruolo] || u.ruolo}</td>
                 <td><span className={`chip ${u.attivo ? 'ok' : 'warn'}`}>{u.attivo ? 'Attivo' : 'Disattivato'}</span></td>
                 <td className="right">
-                  <button className="ghost" onClick={() => { setErr(''); setEdit({ ...u, password: '' }); }}>Modifica</button>
-                  {u._id !== me._id && <button className="ghost danger" onClick={() => elimina(u)}>Elimina</button>}
+                  {modificabile(u) && <button className="ghost" onClick={() => { setErr(''); setEdit({ ...u, password: '' }); }}>Modifica</button>}
+                  {u._id !== me._id && modificabile(u) && <button className="ghost danger" onClick={() => elimina(u)}>Elimina</button>}
                 </td>
               </tr>
             ))}

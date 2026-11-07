@@ -90,7 +90,7 @@ function Impostazioni() {
         <p className="muted">
           {imp.iscrizioniAperte
             ? 'Gli educatori possono registrare nuovi ragazzi. Nascondi la pagina quando le iscrizioni sono chiuse.'
-            : 'Gli educatori non vedono più «Nuova iscrizione» e non possono registrare ragazzi. Tu, come admin, puoi sempre farlo. Mostrala di nuovo quando riaprono le iscrizioni.'}
+            : 'Gli educatori non vedono più «Nuova iscrizione» e non possono registrare ragazzi. Tu e il parroco potete sempre farlo. Mostrala di nuovo quando riaprono le iscrizioni.'}
         </p>
         <div className="actions">
           <button className={imp.iscrizioniAperte ? 'danger' : 'primary'} onClick={cambiaIscrizioni}>

@@ -230,6 +230,52 @@ tr.editing { background: #fff6d6; }
   .filtri-pannello .segmented button { flex: 1; }
 }
 
+/* ---------- Filtri del parroco: titolo sopra ogni filtro e linee sottili tra uno e l'altro ---------- */
+.filtri-box.nuovo { display: flex; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: .85rem; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: 1.5rem; }
+.nuovo .filtri-top { order: 0; flex: none; display: flex; gap: .5rem; min-width: 0; }
+.nuovo .filtri-top input { flex: 1; min-width: 0; }
+.nuovo .filtri-pannello { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 0;
+  border-top: 1px solid var(--line); padding-top: .85rem; }
+.nuovo .filtri-pannello .azzera { display: none; }  /* su schermi larghi "Azzera filtri" sta accanto alla ricerca */
+.nuovo .azzera-alto { flex: none; }
+.nuovo .filtri-gruppi { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: start; min-width: 0; flex: 1; }
+.nuovo .filtro { display: flex; flex-direction: column; gap: .35rem; min-width: 0; padding: 0 1.1rem; }
+.nuovo .filtro:first-child { padding-left: 0; }
+.nuovo .filtro:not(:first-child) { border-left: 1px solid var(--line); }
+.nuovo .filtro-titolo { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+.nuovo .filtro .segmented { background: #f4f6f8; align-self: flex-start; }
+.nuovo .filtro .segmented button { white-space: nowrap; }
+.nuovo .filtro .segmented button:not(.on):hover { background: #e6ebf0; }
+/* Il nome del gruppo scelto resta su una riga e finisce con "…" */
+.nuovo .filtro .gruppi-multipli { max-width: 100%; min-width: 0; }
+.nuovo .filtro .gruppi-multipli > button { max-width: 100%; min-width: min(12rem, 100%); }
+.nuovo .gruppi-multipli > button .testo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nuovo .gruppi-multipli .menu-lista { max-width: min(26rem, 90vw); }
+.nuovo .gruppi-multipli .menu-lista.caselle label { white-space: normal; }
+/* Schermi medi: due filtri per riga */
+@media (max-width: 1000px) and (min-width: 861px) {
+  .nuovo .filtri-gruppi { grid-template-columns: auto minmax(0, 1fr); }
+  .nuovo .filtro:nth-child(3) { grid-column: 1 / -1; padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: .8rem; margin-top: .8rem; }
+}
+/* Schermi stretti: un filtro per riga, separati da una linea */
+@media (max-width: 860px) {
+  .nuovo .filtri-pannello { flex-direction: column; align-items: stretch; }
+  .nuovo .filtri-gruppi { display: flex; flex-direction: column; align-items: stretch; }
+  .nuovo .filtro:nth-child(n) { padding: .7rem 0; margin: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .nuovo .filtro:first-child { padding-top: 0; border-top: 0; }
+}
+@media (max-width: 640px) {
+  .filtri-box.nuovo { display: flex; padding: .75rem; gap: 0; margin-bottom: 1.1rem; }
+  .nuovo .filtri-pannello { display: none; margin-top: .75rem; }
+  .nuovo .filtri-pannello.open { display: flex; }
+  .nuovo .filtro .segmented { width: 100%; }
+  .nuovo .filtro .segmented button { flex: 1; white-space: normal; }
+  .nuovo .filtro .gruppi-multipli, .nuovo .filtro .gruppi-multipli > button { width: 100%; min-width: 0; }
+  .nuovo .filtri-pannello .azzera { display: block; width: 100%; }
+  .nuovo .azzera-alto { display: none; }
+}
+
 /* ---------- Pulsante con menu a tendina ---------- */
 .menu-tendina { position: relative; display: inline-block; }
 .menu-lista { position: absolute; right: 0; top: calc(100% + 4px); min-width: 13rem; z-index: 20; display: flex; flex-direction: column;

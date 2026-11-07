@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 
 // Riga di pulsanti in cui se ne possono accendere più di uno insieme.
 // "Tutti" è acceso quando non c'è nessuna scelta; accenderle tutte equivale a "Tutti".
+// Con due sole opzioni (es. Tesserati / Non tesserati) toccare l'altra passa a quella, invece di tornare a "Tutti".
 // valori: array dei valori scelti · opzioni: [[valore, etichetta], ...] (senza "Tutti")
 export function SceltaMultipla({ valori, onChange, opzioni, etichetta }) {
   const cambia = (v) => {
+    if (opzioni.length <= 2) return onChange(valori.includes(v) ? [] : [v]);
     const nuovi = valori.includes(v) ? valori.filter((x) => x !== v) : [...valori, v];
     onChange(nuovi.length === opzioni.length ? [] : nuovi);
   };
@@ -13,6 +15,20 @@ export function SceltaMultipla({ valori, onChange, opzioni, etichetta }) {
       <button type="button" className={valori.length ? '' : 'on'} aria-pressed={!valori.length} onClick={() => onChange([])}>Tutti</button>
       {opzioni.map(([v, l]) => (
         <button key={v} type="button" className={valori.includes(v) ? 'on' : ''} aria-pressed={valori.includes(v)} onClick={() => cambia(v)}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+// Riga di pulsanti in cui se ne accende uno solo: "Tutti" oppure una delle opzioni.
+// Usa la stessa forma dei filtri multipli: [] = Tutti, [valore] = solo quella scelta.
+export function SceltaSingola({ valori, onChange, opzioni, etichetta }) {
+  const scelto = valori.length === 1 ? valori[0] : '';
+  return (
+    <div className="segmented" role="radiogroup" aria-label={etichetta}>
+      {[['', 'Tutti'], ...opzioni].map(([v, l]) => (
+        <button key={v || 'tutti'} type="button" role="radio" className={scelto === v ? 'on' : ''} aria-checked={scelto === v}
+          onClick={() => onChange(v ? [v] : [])}>{l}</button>
       ))}
     </div>
   );
@@ -38,8 +54,8 @@ export function GruppiMultipli({ valori, onChange, opzioni }) {
 
   return (
     <div className="menu-tendina gruppi-multipli" ref={rif}>
-      <button type="button" className="ghost" aria-haspopup="true" aria-expanded={aperto} onClick={() => setAperto(!aperto)}>
-        {testo} <span aria-hidden="true">▾</span>
+      <button type="button" className="ghost" aria-haspopup="true" aria-expanded={aperto} title={testo} onClick={() => setAperto(!aperto)}>
+        <span className="testo">{testo}</span> <span aria-hidden="true">▾</span>
       </button>
       {aperto && (
         <div className="menu-lista caselle">

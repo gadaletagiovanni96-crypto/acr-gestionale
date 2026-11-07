@@ -20,6 +20,8 @@ function Layout() {
   const { pathname } = useLocation();
   useEffect(() => setAperto(false), [pathname]); // chiude il menu quando si cambia pagina
   const imp = useImpostazioni(pathname);
+  const r = user.ruolo;
+  const gestione = r === 'admin' || r === 'parroco'; // admin e parroco
 
   return (
     <>
@@ -31,13 +33,13 @@ function Layout() {
         <div id="menu" className={`menu${aperto ? ' open' : ''}`}>
           <nav>
             <NavLink to="/" end>Ragazzi</NavLink>
-            {user.ruolo === 'educatore' && <NavLink to="/miei-gruppi">I miei gruppi</NavLink>}
-            {(user.ruolo === 'admin' || imp?.iscrizioniAperte !== false) && <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/tesseramento">Tesseramento</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/gruppi">Gruppi</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/educatori">Educatori & Account</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
-            {user.ruolo === 'admin' && <NavLink to="/contabilita">Contabilità</NavLink>}
+            {r === 'educatore' && <NavLink to="/miei-gruppi">I miei gruppi</NavLink>}
+            {(gestione || imp?.iscrizioniAperte !== false) && <NavLink to="/iscritti/nuovo">Nuova iscrizione</NavLink>}
+            {r === 'admin' && <NavLink to="/tesseramento">Tesseramento</NavLink>}
+            {gestione && <NavLink to="/gruppi">Gruppi</NavLink>}
+            {gestione && <NavLink to="/educatori">Educatori & Account</NavLink>}
+            {r === 'admin' && <NavLink to="/anno">Nuovo anno</NavLink>}
+            {gestione && <NavLink to="/contabilita">Contabilità</NavLink>}
           </nav>
           <div className="who">
             <span>{user.nome} {user.cognome} <small>({user.ruolo})</small></span>
@@ -50,11 +52,12 @@ function Layout() {
   );
 }
 
-function Private({ admin }) {
+// Senza "ruoli" serve solo l'accesso; con "ruoli" la pagina è riservata a quei tipi di account
+function Private({ ruoli }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (admin && user.ruolo !== 'admin') return <Navigate to="/" replace />;
-  return admin ? <Outlet /> : <Layout />;
+  if (ruoli && !ruoli.includes(user.ruolo)) return <Navigate to="/" replace />;
+  return ruoli ? <Outlet /> : <Layout />;
 }
 
 export default function App() {
@@ -67,14 +70,16 @@ export default function App() {
         <Route path="/iscritti/nuovo" element={<MemberForm />} />
         <Route path="/iscritti/:id" element={<MemberForm />} />
         <Route path="/miei-gruppi" element={<MieiGruppi />} />
-        <Route element={<Private admin />}>
+        <Route element={<Private ruoli={['admin', 'parroco']} />}>
           <Route path="/gruppi" element={<Groups />} />
           <Route path="/educatori" element={<Users />} />
+          <Route path="/contabilita" element={<Contabilita />} />
+          <Route path="/contabilita/:id" element={<Evento />} />
+        </Route>
+        <Route element={<Private ruoli={['admin']} />}>
           <Route path="/tesseramento" element={<Tesseramento />} />
           <Route path="/tesseramento/contabilita" element={<ContabilitaTessere />} />
           <Route path="/anno" element={<Anno />} />
-          <Route path="/contabilita" element={<Contabilita />} />
-          <Route path="/contabilita/:id" element={<Evento />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

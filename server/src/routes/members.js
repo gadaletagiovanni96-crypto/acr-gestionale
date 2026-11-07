@@ -7,7 +7,7 @@ const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
 const { statoIscrizione } = Member;
 const Group = require('../models/Group');
-const { auth, soloAdmin } = require('../middleware/auth');
+const { auth, soloAdmin, ruoli } = require('../middleware/auth');
 
 router.use(auth);
 
@@ -15,7 +15,7 @@ router.use(auth);
 router.param('id', async (req, res, next, id) => {
   try {
     const m = await Member.findById(id);
-    if (!m || (m.trasferito && req.user.ruolo !== 'admin')) return res.status(404).json({ message: 'Ragazzo non trovato' });
+    if (!m || (m.trasferito && req.user.ruolo !== 'admin') || nascondiAlParroco(req, m)) return res.status(404).json({ message: 'Ragazzo non trovato' });
     req.member = m;
     next();
   } catch (e) { next(e); }
@@ -34,24 +34,44 @@ function pulisci(body, admin = false) {
   return d;
 }
 
+// Cosa vede chi fa la richiesta. uso = 'pagina' | 'pdf' | 'xlsx'
+//   admin: tutto.  educatore: niente trasferiti né tesseramento.
+//   parroco: nella pagina niente tesseramento e niente non iscritti; PDF ed Excel come l'admin,
+//   ma nel PDF senza i non iscritti.
+function vista(req, uso = 'pagina') {
+  const r = req.user.ruolo;
+  if (r === 'admin') return { admin: true, escludiNonIscritti: false };
+  if (r === 'parroco') return { admin: uso !== 'pagina', escludiNonIscritti: uso !== 'xlsx', parroco: true };
+  return { admin: false, escludiNonIscritti: false };
+}
+
+// Il parroco non riceve i dati del tesseramento
+function senzaTessera(doc) {
+  const o = typeof doc.toJSON === 'function' ? doc.toJSON() : { ...doc };
+  delete o.tesserato;
+  return o;
+}
+const NON_ISCRITTO = { quotaVersata: { $not: { $gt: 0 } }, nonIscritto: true };
+const nascondiAlParroco = (req, m) => req.user.ruolo === 'parroco' && !m.trasferito && !(m.quotaVersata > 0) && m.nonIscritto;
+
 // Filtro condiviso da elenco e PDF. Restituisce null se non c'è nulla da mostrare.
 // Ogni filtro accetta più valori separati da virgola (es. iscrizione=dacompletare,noniscritti):
 // dentro lo stesso filtro vale "uno qualsiasi", tra filtri diversi valgono tutti insieme.
 //   gruppo = id dei gruppi, nessuno, trasferiti (solo admin)
 //   iscrizione = si | dacompletare | noniscritti   tesserato = si | no (solo admin)   fratelli = si | no
 const lista = (v, ammessi) => [...new Set(String(v || '').split(',').map((x) => x.trim()).filter((x) => ammessi(x)))];
-const filtriScelti = (query, admin) => ({
-  gruppi: lista(query.gruppo, (x) => x === 'nessuno' || (x === 'trasferiti' && admin) || mongoose.isValidObjectId(x)),
-  iscrizione: lista(query.iscrizione, (x) => ['si', 'dacompletare', 'noniscritti'].includes(x)),
-  tesserato: admin ? lista(query.tesserato, (x) => ['si', 'no'].includes(x)) : [],
+const filtriScelti = (query, v) => ({
+  gruppi: lista(query.gruppo, (x) => x === 'nessuno' || (x === 'trasferiti' && v.admin) || mongoose.isValidObjectId(x)),
+  iscrizione: lista(query.iscrizione, (x) => ['si', 'dacompletare', ...(v.escludiNonIscritti ? [] : ['noniscritti'])].includes(x)),
+  tesserato: v.admin ? lista(query.tesserato, (x) => ['si', 'no'].includes(x)) : [],
   fratelli: lista(query.fratelli, (x) => ['si', 'no'].includes(x)),
 });
 
-function filtroDa(req) {
-  const admin = req.user.ruolo === 'admin';
-  const s = filtriScelti(req.query, admin);
+function filtroDa(req, v = vista(req)) {
+  const s = filtriScelti(req.query, v);
   const e = []; // condizioni che devono valere tutte
-  if (!admin) e.push({ trasferito: { $ne: true } });
+  if (!v.admin) e.push({ trasferito: { $ne: true } });
+  if (v.escludiNonIscritti) e.push({ $nor: [{ ...NON_ISCRITTO, trasferito: { $ne: true } }] });
   if (s.gruppi.length) {
     const ids = s.gruppi.filter((x) => x !== 'nessuno' && x !== 'trasferiti');
     const o = [];
@@ -75,9 +95,8 @@ function filtroDa(req) {
 }
 
 // Descrizione dei filtri per PDF ed Excel, es. "da completare o non iscritti, solo tesserati"
-function descrizioneFiltri(req) {
-  const admin = req.user.ruolo === 'admin';
-  const s = filtriScelti(req.query, admin);
+function descrizioneFiltri(req, v = vista(req)) {
+  const s = filtriScelti(req.query, v);
   const nomi = { si: 'iscritti', dacompletare: 'da completare', noniscritti: 'non iscritti' };
   return [
     s.iscrizione.length && s.iscrizione.length < 3 ? 'solo ' + s.iscrizione.map((v) => nomi[v]).join(' o ') : '',
@@ -90,7 +109,8 @@ function descrizioneFiltri(req) {
 router.get('/', async (req, res) => {
   const f = filtroDa(req);
   if (!f) return res.json([]);
-  res.json(await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 }));
+  const ragazzi = await Member.find(f).populate('gruppo', 'nome').sort({ cognome: 1, nome: 1 });
+  res.json(req.user.ruolo === 'parroco' ? ragazzi.map(senzaTessera) : ragazzi);
 });
 
 // ---------- PDF degli elenchi (un gruppo per pagina) ----------
@@ -110,9 +130,10 @@ async function aggiungiFratelli(members) {
 
 router.get('/pdf', async (req, res) => {
   const { annoAssociativo } = await leggiImpostazioni();
-  const admin = req.user.ruolo === 'admin';
-  const conFratelli = admin && req.query.conFratelli === '1'; // solo admin: PDF con la colonna dei fratelli
-  const f = filtroDa(req);
+  const v = vista(req, 'pdf');
+  const admin = v.admin;
+  const conFratelli = admin && req.query.conFratelli === '1'; // admin e parroco: PDF con la colonna dei fratelli
+  const f = filtroDa(req, v);
   const [members, groups] = await Promise.all([
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
@@ -131,7 +152,7 @@ router.get('/pdf', async (req, res) => {
 
   const dataIt = (d) => (d ? new Date(d).toLocaleDateString('it-IT') : '');
   const euro = (n) => '€ ' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const filtroTesto = descrizioneFiltri(req);
+  const filtroTesto = descrizioneFiltri(req, v);
 
   const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true, info: { Title: "Elenco ragazzi - ACR Parrocchia Sant'Achille, Molfetta" } });
   res.setHeader('Content-Type', 'application/pdf');
@@ -183,6 +204,7 @@ router.get('/pdf', async (req, res) => {
     const ly = doc.y + 6;
     doc.rect(L, ly, 10, 10).lineWidth(0.5).fillAndStroke(ROSSO, '#d9a79f');
     doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Da completare', L + 16, ly + 1, { lineBreak: false });
+    if (v.escludiNonIscritti) return; // nel PDF del parroco i non iscritti non ci sono
     doc.rect(L + 110, ly, 10, 10).lineWidth(0.5).fillAndStroke(GRIGIO, '#b8bec6');
     doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('Non iscritto', L + 126, ly + 1, { lineBreak: false });
   };
@@ -242,8 +264,9 @@ router.get('/pdf', async (req, res) => {
 
 // ---------- Foglio di calcolo Excel (un foglio per gruppo) ----------
 router.get('/xlsx', async (req, res) => {
-  const admin = req.user.ruolo === 'admin';
-  const f = filtroDa(req);
+  const v = vista(req, 'xlsx');
+  const admin = v.admin; // l'Excel del parroco è uguale a quello dell'admin
+  const f = filtroDa(req, v);
   const [members, groups] = await Promise.all([
     f ? Member.find(f).sort({ cognome: 1, nome: 1 }) : [],
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
@@ -299,7 +322,7 @@ router.get('/xlsx', async (req, res) => {
     ws.getCell('A1').value = s.titolo;
     ws.getCell('A1').font = { bold: true, size: 14, color: { argb: INK } };
     if (!s.senzaEducatori) ws.getCell('A2').value = 'Educatori: ' + (s.educatori.join(', ') || 'nessuno assegnato');
-    const filtri = descrizioneFiltri(req);
+    const filtri = descrizioneFiltri(req, v);
     if (filtri) ws.getCell('A3').value = 'Filtri: ' + filtri;
     const head = ws.getRow(4);
     head.values = cols.map((c) => c.t);
@@ -347,18 +370,21 @@ router.get('/xlsx', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const m = req.member;
+  const parroco = req.user.ruolo === 'parroco';
   const fratelli = m.familyId
     ? await Member.find({ familyId: m.familyId, _id: { $ne: m._id }, ...(req.user.ruolo === 'admin' ? {} : { trasferito: { $ne: true } }) })
-        .select('nome cognome dataNascita tesserato').sort({ dataNascita: 1 })
+        .select('nome cognome dataNascita tesserato quotaVersata nonIscritto trasferito').sort({ dataNascita: 1 })
     : [];
+  if (parroco) return res.json({ ...senzaTessera(m), fratelli: fratelli.filter((f) => !nascondiAlParroco(req, f)).map(senzaTessera) });
   res.json({ ...m.toJSON(), fratelli });
 });
 
 router.post('/', async (req, res) => {
-  // Se l'admin ha chiuso le iscrizioni, gli educatori non possono registrare nuovi ragazzi
-  if (req.user.ruolo !== 'admin' && !(await leggiImpostazioni()).iscrizioniAperte)
-    return res.status(403).json({ message: "Le iscrizioni sono chiuse: al momento solo l'amministratore può registrare nuovi ragazzi." });
-  res.status(201).json(await Member.create({ ...pulisci(req.body, req.user.ruolo === 'admin'), creatoDa: req.user._id }));
+  // Se l'admin ha chiuso le iscrizioni, gli educatori non possono registrare nuovi ragazzi (admin e parroco sì)
+  if (req.user.ruolo === 'educatore' && !(await leggiImpostazioni()).iscrizioniAperte)
+    return res.status(403).json({ message: "Le iscrizioni sono chiuse: al momento solo il parroco o l'amministratore possono registrare nuovi ragazzi." });
+  const m = await Member.create({ ...pulisci(req.body, req.user.ruolo === 'admin'), creatoDa: req.user._id });
+  res.status(201).json(req.user.ruolo === 'parroco' ? senzaTessera(m) : m);
 });
 
 // Tutti gli educatori possono modificare qualsiasi scheda
@@ -369,10 +395,11 @@ router.put('/:id', async (req, res) => {
   // L'admin ha risposto "sì" alla domanda: tessera anche i fratelli collegati
   if (req.user.ruolo === 'admin' && req.body.tesseraFratelli === true && m.tesserato && m.familyId)
     await Member.updateMany({ familyId: m.familyId, _id: { $ne: m._id }, trasferito: { $ne: true } }, { tesserato: true });
-  res.json(m);
+  res.json(req.user.ruolo === 'parroco' ? senzaTessera(m) : m);
 });
 
-router.delete('/:id', soloAdmin, async (req, res) => {
+// Eliminano le iscrizioni l'admin e il parroco
+router.delete('/:id', ruoli('admin', 'parroco'), async (req, res) => {
   const m = await Member.findByIdAndDelete(req.member._id);
   if (m.familyId && (await Member.countDocuments({ familyId: m.familyId })) < 2)
     await Member.updateMany({ familyId: m.familyId }, { familyId: null });
@@ -382,6 +409,7 @@ router.delete('/:id', soloAdmin, async (req, res) => {
 // "Non si iscrive" (educatori e admin): il ragazzo resta negli elenchi come Non iscritto, anche dopo la chiusura dell'anno.
 // Con { nonIscritto: false } torna "da completare". Con { scollegaFratelli: true } viene anche tolto dalla famiglia.
 router.post('/:id/non-iscritto', async (req, res) => {
+  if (req.user.ruolo === 'parroco') return res.status(403).json({ message: 'Operazione non consentita per questo account' });
   const m = req.member;
   const valore = req.body.nonIscritto !== false;
   if (valore && m.quotaVersata > 0)

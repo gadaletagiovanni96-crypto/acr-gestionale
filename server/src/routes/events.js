@@ -1,9 +1,9 @@
 const router = require('express').Router();
 const Event = require('../models/Event');
-const { auth, soloAdmin } = require('../middleware/auth');
+const { auth, ruoli } = require('../middleware/auth');
 const { pdf, xlsx } = require('./eventsExport');
 
-router.use(auth, soloAdmin); // la contabilità è riservata agli admin
+router.use(auth, ruoli('admin', 'parroco')); // la contabilità è riservata ad admin e parroco
 
 const prendi = (body, campi) => {
   const d = {};

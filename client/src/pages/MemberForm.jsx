@@ -162,7 +162,9 @@ export default function MemberForm() {
     try { await api.del(`/members/${id}`); nav('/'); } catch (x) { setErr(x.message); }
   };
 
-  if (!id && user.ruolo !== 'admin') {
+  const parroco = user.ruolo === 'parroco';
+
+  if (!id && user.ruolo === 'educatore') {
     if (!imp) return <p className="muted">Caricamento…</p>;
     if (!imp.iscrizioniAperte) return (
       <>
@@ -260,16 +262,16 @@ export default function MemberForm() {
         {ok && <p className="success" role="status">{ok}</p>}
         <div className="actions">
             <button className="primary" disabled={busy}>{id ? 'Salva modifiche' : 'Registra iscrizione'}</button>
-            {id && user.ruolo === 'admin' && <button type="button" className="danger" onClick={elimina}>Elimina iscrizione</button>}
-            {id && !f.trasferito && !f.nonIscritto && !(Number(f.quotaVersata) > 0) && (
+            {id && (user.ruolo === 'admin' || parroco) && <button type="button" className="danger" onClick={elimina}>Elimina iscrizione</button>}
+            {id && !parroco && !f.trasferito && !f.nonIscritto && !(Number(f.quotaVersata) > 0) && (
               <button type="button" className="ghost" onClick={() => nonSiIscrive(true)}>Non si iscrive</button>
             )}
-            {id && f.nonIscritto && <button type="button" className="ghost" onClick={() => nonSiIscrive(false)}>Annulla «Non si iscrive»</button>}
+            {id && !parroco && f.nonIscritto && <button type="button" className="ghost" onClick={() => nonSiIscrive(false)}>Annulla «Non si iscrive»</button>}
         </div>
       </form>
 
       {id && <Fratelli id={id} fratelli={fratelli} onChange={carica} />}
-      {id && <fieldset className="card">
+      {id && !parroco && <fieldset className="card">
             <legend>Tesseramento</legend>
             <div className="switch-riga">
               <button type="button" role="switch" aria-checked={!!f.tesserato} aria-label="Tesserato" className={`switch${f.tesserato ? ' on' : ''}`} onClick={cambiaTessera}><span /></button>

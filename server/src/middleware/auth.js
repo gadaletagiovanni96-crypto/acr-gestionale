@@ -16,5 +16,9 @@ exports.auth = async (req, res, next) => {
   }
 };
 
+// Solo i ruoli indicati, es. ruoli('admin', 'parroco')
+exports.ruoli = (...ammessi) => (req, res, next) =>
+  ammessi.includes(req.user.ruolo) ? next() : res.status(403).json({ message: 'Operazione non consentita per questo account' });
+
 exports.soloAdmin = (req, res, next) =>
   req.user.ruolo === 'admin' ? next() : res.status(403).json({ message: 'Operazione riservata agli amministratori' });
