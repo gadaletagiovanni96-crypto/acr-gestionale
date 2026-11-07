@@ -18,6 +18,20 @@ export function SceltaMultipla({ valori, onChange, opzioni, etichetta }) {
   );
 }
 
+// Riga di pulsanti in cui se ne accende uno solo: "Tutti" oppure una delle opzioni.
+// Usa la stessa forma dei filtri multipli: [] = Tutti, [valore] = solo quella scelta.
+export function SceltaSingola({ valori, onChange, opzioni, etichetta }) {
+  const scelto = valori.length === 1 ? valori[0] : '';
+  return (
+    <div className="segmented" role="radiogroup" aria-label={etichetta}>
+      {[['', 'Tutti'], ...opzioni].map(([v, l]) => (
+        <button key={v || 'tutti'} type="button" role="radio" className={scelto === v ? 'on' : ''} aria-checked={scelto === v}
+          onClick={() => onChange(v ? [v] : [])}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
 // Menu a tendina con le caselle dei gruppi: se ne possono scegliere più di uno.
 export function GruppiMultipli({ valori, onChange, opzioni }) {
   const [aperto, setAperto] = useState(false);

@@ -5,7 +5,7 @@ import { useAuth } from '../auth.jsx';
 import PannelloFiltri from '../components/PannelloFiltri.jsx';
 import { useImpostazioni } from '../impostazioni';
 import MenuTendina from '../components/MenuTendina.jsx';
-import { SceltaMultipla, GruppiMultipli } from '../components/FiltriMultipli.jsx';
+import { SceltaMultipla, SceltaSingola, GruppiMultipli } from '../components/FiltriMultipli.jsx';
 
 // Ogni filtro è una lista di scelte (vuota = Tutti). Dentro un filtro basta una scelta qualsiasi, tra filtri diversi valgono tutti.
 const CHIAVE_FILTRI = 'acr_filtri_ragazzi';
@@ -27,11 +27,18 @@ const statoDi = (m) => (m.iscritto ? 'si' : m.nonIscritto ? 'noniscritti' : 'dac
 export default function Members() {
   const { user } = useAuth();
   const admin = user.ruolo === 'admin';
+  const parroco = user.ruolo === 'parroco';
   const imp = useImpostazioni();
-  const iscrizioniChiuse = !admin && imp?.iscrizioniAperte === false;
+  const iscrizioniChiuse = user.ruolo === 'educatore' && imp?.iscrizioniAperte === false;
   const [members, setMembers] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [filtro, setFiltro] = useState(filtriSalvati);
+  const [filtroScelto, setFiltro] = useState(filtriSalvati);
+  // Il parroco ha solo due filtri, a scelta singola: Tutti / Iscritti / Da completare e Tutti / Con fratelli / Senza fratelli
+  const filtro = useMemo(() => (parroco ? {
+    ...FILTRI_VUOTI, q: filtroScelto.q,
+    iscrizione: filtroScelto.iscrizione.length === 1 && filtroScelto.iscrizione[0] !== 'noniscritti' ? filtroScelto.iscrizione : [],
+    fratelli: filtroScelto.fratelli.length === 1 ? filtroScelto.fratelli : [],
+  } : filtroScelto), [filtroScelto, parroco]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -105,11 +112,13 @@ export default function Members() {
       <div className="page-head">
         <div>
           <h1>Ragazzi</h1>
-          <p className="muted">{conteggiati.length} registrati · {totIscritti} iscritti · {conteggiati.length - totIscritti - totNonIscritti} da completare · {totNonIscritti} non iscritti</p>
+          <p className="muted">{parroco
+            ? `${conteggiati.length} registrati · ${totIscritti} iscritti · ${conteggiati.length - totIscritti} da completare`
+            : `${conteggiati.length} registrati · ${totIscritti} iscritti · ${conteggiati.length - totIscritti - totNonIscritti} da completare · ${totNonIscritti} non iscritti`}</p>
           {esclusi.length > 0 && <p className="muted" style={{ fontSize: '.85rem', marginTop: '.15rem' }}>Non conteggiati nel totale: {esclusi.map((g) => g.nome).join(', ')}</p>}
         </div>
         <div className="actions" style={{ marginTop: 0 }}>
-          {admin ? (
+          {admin || parroco ? (
             <MenuTendina etichetta={pdfBusy ? 'Creo il PDF…' : 'Scarica PDF'} disabilitato={pdfBusy}
               voci={[{ etichetta: 'PDF senza fratelli', azione: () => pdf(false) }, { etichetta: 'PDF con fratelli', azione: () => pdf(true) }]} />
           ) : (
@@ -126,16 +135,27 @@ export default function Members() {
           ? () => setFiltro(FILTRI_VUOTI) : null}
         ricerca={<input type="search" placeholder="Cerca per nome o cognome" value={filtro.q} onChange={(e) => set('q')(e.target.value)} aria-label="Cerca" />}
       >
-        <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
-          opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
-        {admin && (
-          <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
-            opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
+        {parroco ? (
+          <>
+            <SceltaSingola etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare']]} />
+            <SceltaSingola etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+          </>
+        ) : (
+          <>
+            <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
+            {admin && (
+              <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
+                opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
+            )}
+            <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+              opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
+          </>
         )}
-        <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
-          opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
-        <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
-          opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
       </PannelloFiltri>
 
       {err && <p className="error">{err}</p>}

@@ -7,7 +7,7 @@ const userSchema = new Schema(
     cognome: { type: String, trim: true, default: '' },
     email: { type: String, required: [true, "L'email è obbligatoria"], unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, select: false, minlength: [8, 'La password deve avere almeno 8 caratteri'] },
-    ruolo: { type: String, enum: ['admin', 'educatore'], default: 'educatore' },
+    ruolo: { type: String, enum: ['admin', 'parroco', 'educatore'], default: 'educatore' },
     attivo: { type: Boolean, default: true },
   },
   { timestamps: true }

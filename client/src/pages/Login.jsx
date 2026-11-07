@@ -33,9 +33,9 @@ export default function Login() {
       <form className="login-form" onSubmit={submit}>
         <h2>Accedi</h2>
         <div className="segmented" role="radiogroup" aria-label="Tipo di account">
-          {['educatore', 'admin'].map((r) => (
+          {[['educatore', 'Educatore'], ['parroco', 'Parroco'], ['admin', 'Responsabile']].map(([r, nome]) => (
             <button type="button" key={r} className={ruolo === r ? 'on' : ''} onClick={() => setRuolo(r)} role="radio" aria-checked={ruolo === r}>
-              {r === 'admin' ? 'Responsabile/Parroco' : 'Educatore'}
+              {nome}
             </button>
           ))}
         </div>
