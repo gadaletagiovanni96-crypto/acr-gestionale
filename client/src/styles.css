@@ -210,24 +210,31 @@ tr.editing { background: #fff6d6; }
 .tabella-gruppo a { text-decoration-color: #b9c4d0; }
 .sib-line { margin: .1rem 0; }
 .sib-line .chip { margin-left: .25rem; }
-.filtri-box { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
-.filtri-top { order: 2; flex: 1; min-width: 200px; display: flex; gap: .5rem; }
+.filtri-box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: 1.5rem;
+  display: flex; flex-direction: column; gap: .85rem; }
+.filtri-top { display: flex; gap: .5rem; }
 .filtri-top input { flex: 1; min-width: 0; }
-.filtri-pannello { display: contents; }          /* su schermi larghi i controlli stanno sulla stessa riga */
-.filtri-pannello select { width: auto; }
-.filtri-pannello .azzera { order: 3; }
+.filtri-pannello { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  border-top: 1px solid var(--line); padding-top: .85rem; }
+.filtri-gruppi { display: flex; flex-wrap: wrap; gap: .7rem; }
+.filtro { display: flex; flex-direction: column; gap: .4rem; padding: .55rem .7rem .65rem; background: #f7f9fb;
+  border: 1px solid var(--line); border-top: 3px solid var(--sun); border-radius: var(--radius); }
+.filtro-titolo { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.filtro .segmented button:not(.on):hover { background: #eef2f6; }
+.filtri-pannello .azzera { flex: none; }
 .filtri-toggle { display: none; align-items: center; gap: .5rem; white-space: nowrap; }
 .badge { background: var(--sun); color: var(--ink); border-radius: 99px; min-width: 1.4rem; height: 1.4rem; padding: 0 .4rem;
   display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; }
 
 @media (max-width: 640px) {
-  .filtri-box { display: block; margin-bottom: 1.1rem; }
-  .filtri-top { min-width: 0; }
+  .filtri-box { padding: .75rem; gap: 0; margin-bottom: 1.1rem; }
   .filtri-toggle { display: inline-flex; }
-  .filtri-pannello { display: none; flex-direction: column; gap: .6rem; margin-top: .6rem; }
+  .filtri-pannello { display: none; flex-direction: column; align-items: stretch; margin-top: .75rem; }
   .filtri-pannello.open { display: flex; }
-  .filtri-pannello .segmented, .filtri-pannello select { width: 100%; }
-  .filtri-pannello .segmented button { flex: 1; }
+  .filtri-gruppi { flex-direction: column; gap: .6rem; }
+  .filtro .segmented { width: 100%; }
+  .filtro .segmented button { flex: 1; }
+  .filtri-pannello .azzera { width: 100%; }
 }
 
 /* ---------- Pulsante con menu a tendina ---------- */

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, eta, dataIt, euro, labelGruppo, scaricaPdf, scaricaExcel } from '../api';
 import { useAuth } from '../auth.jsx';
-import PannelloFiltri from '../components/PannelloFiltri.jsx';
+import PannelloFiltri, { Filtro } from '../components/PannelloFiltri.jsx';
 import { useImpostazioni } from '../impostazioni';
 import MenuTendina from '../components/MenuTendina.jsx';
 import { SceltaMultipla, SceltaSingola, GruppiMultipli } from '../components/FiltriMultipli.jsx';
@@ -139,25 +139,39 @@ export default function Members() {
       >
         {parroco ? (
           <>
-            <SceltaSingola etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
-              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare']]} />
-            <SceltaSingola etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
-              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
-            <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
-              opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo']]} />
+            <Filtro titolo="Iscrizione">
+              <SceltaSingola etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+                opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare']]} />
+            </Filtro>
+            <Filtro titolo="Fratelli">
+              <SceltaSingola etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+                opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            </Filtro>
+            <Filtro titolo="Gruppo">
+              <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+                opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo']]} />
+            </Filtro>
           </>
         ) : (
           <>
-            <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
-              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
+            <Filtro titolo="Iscrizione">
+              <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+                opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
+            </Filtro>
             {admin && (
-              <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
-                opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
+              <Filtro titolo="Tesseramento">
+                <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
+                  opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
+              </Filtro>
             )}
-            <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
-              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
-            <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
-              opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
+            <Filtro titolo="Fratelli">
+              <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+                opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            </Filtro>
+            <Filtro titolo="Gruppo">
+              <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+                opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
+            </Filtro>
           </>
         )}
       </PannelloFiltri>

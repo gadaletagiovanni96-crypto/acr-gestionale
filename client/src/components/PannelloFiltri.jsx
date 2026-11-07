@@ -1,5 +1,15 @@
 import { useState } from 'react';
 
+// Un filtro con il suo titolo, separato dagli altri
+export function Filtro({ titolo, children }) {
+  return (
+    <div className="filtro">
+      <span className="filtro-titolo">{titolo}</span>
+      {children}
+    </div>
+  );
+}
+
 // Barra dei filtri. Su schermi larghi è tutta in vista; su telefono resta visibile solo la ricerca
 // e un pulsante "Filtri" (con il numero di filtri attivi) apre e chiude gli altri controlli.
 export default function PannelloFiltri({ ricerca, badge = 0, onAzzera, children }) {
@@ -14,7 +24,7 @@ export default function PannelloFiltri({ ricerca, badge = 0, onAzzera, children 
         </button>
       </div>
       <div id="pannello-filtri" className={`filtri-pannello${aperto ? ' open' : ''}`}>
-        {children}
+        <div className="filtri-gruppi">{children}</div>
         {onAzzera && <button type="button" className="ghost azzera" onClick={onAzzera}>Azzera filtri</button>}
       </div>
     </div>
