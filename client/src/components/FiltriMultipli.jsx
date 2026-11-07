@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 
 // Riga di pulsanti in cui se ne possono accendere più di uno insieme.
 // "Tutti" è acceso quando non c'è nessuna scelta; accenderle tutte equivale a "Tutti".
+// Con due sole opzioni (es. Tesserati / Non tesserati) toccare l'altra passa a quella, invece di tornare a "Tutti".
 // valori: array dei valori scelti · opzioni: [[valore, etichetta], ...] (senza "Tutti")
 export function SceltaMultipla({ valori, onChange, opzioni, etichetta }) {
   const cambia = (v) => {
+    if (opzioni.length <= 2) return onChange(valori.includes(v) ? [] : [v]);
     const nuovi = valori.includes(v) ? valori.filter((x) => x !== v) : [...valori, v];
     onChange(nuovi.length === opzioni.length ? [] : nuovi);
   };
