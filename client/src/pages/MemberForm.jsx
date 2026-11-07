@@ -262,7 +262,7 @@ export default function MemberForm() {
         {ok && <p className="success" role="status">{ok}</p>}
         <div className="actions">
             <button className="primary" disabled={busy}>{id ? 'Salva modifiche' : 'Registra iscrizione'}</button>
-            {id && user.ruolo === 'admin' && <button type="button" className="danger" onClick={elimina}>Elimina iscrizione</button>}
+            {id && (user.ruolo === 'admin' || parroco) && <button type="button" className="danger" onClick={elimina}>Elimina iscrizione</button>}
             {id && !parroco && !f.trasferito && !f.nonIscritto && !(Number(f.quotaVersata) > 0) && (
               <button type="button" className="ghost" onClick={() => nonSiIscrive(true)}>Non si iscrive</button>
             )}

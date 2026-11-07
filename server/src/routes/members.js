@@ -7,7 +7,7 @@ const ExcelJS = require('exceljs');
 const Member = require('../models/Member');
 const { statoIscrizione } = Member;
 const Group = require('../models/Group');
-const { auth, soloAdmin } = require('../middleware/auth');
+const { auth, soloAdmin, ruoli } = require('../middleware/auth');
 
 router.use(auth);
 
@@ -398,7 +398,8 @@ router.put('/:id', async (req, res) => {
   res.json(req.user.ruolo === 'parroco' ? senzaTessera(m) : m);
 });
 
-router.delete('/:id', soloAdmin, async (req, res) => {
+// Eliminano le iscrizioni l'admin e il parroco
+router.delete('/:id', ruoli('admin', 'parroco'), async (req, res) => {
   const m = await Member.findByIdAndDelete(req.member._id);
   if (m.familyId && (await Member.countDocuments({ familyId: m.familyId })) < 2)
     await Member.updateMany({ familyId: m.familyId }, { familyId: null });
