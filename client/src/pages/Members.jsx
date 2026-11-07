@@ -132,7 +132,7 @@ export default function Members() {
       </div>
       {iscrizioniChiuse && <p className="notice" style={{ marginBottom: '1rem' }}>Le iscrizioni di nuovi ragazzi sono chiuse al momento. Solo il parroco o il responsabile possono aggiungere nuovi iscritti.</p>}
       <PannelloFiltri
-        colonne={parroco ? 3 : 2}
+        nuovo={parroco}
         badge={[filtro.iscrizione, filtro.tesserato, filtro.fratelli, filtro.gruppo].filter((v) => v.length).length}
         onAzzera={filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || filtro.gruppo.length || filtro.q
           ? () => setFiltro(FILTRI_VUOTI) : null}
@@ -155,24 +155,16 @@ export default function Members() {
           </>
         ) : (
           <>
-            <Filtro titolo="Iscrizione">
-              <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
-                opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
-            </Filtro>
+            <SceltaMultipla etichetta="Stato iscrizione" valori={filtro.iscrizione} onChange={set('iscrizione')}
+              opzioni={[['si', 'Iscritti'], ['dacompletare', 'Da completare'], ['noniscritti', 'Non iscritti']]} />
             {admin && (
-              <Filtro titolo="Tesseramento">
-                <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
-                  opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
-              </Filtro>
+              <SceltaMultipla etichetta="Tesseramento" valori={filtro.tesserato} onChange={set('tesserato')}
+                opzioni={[['si', 'Tesserati'], ['no', 'Non tesserati']]} />
             )}
-            <Filtro titolo="Fratelli">
-              <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
-                opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
-            </Filtro>
-            <Filtro titolo="Gruppo">
-              <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
-                opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
-            </Filtro>
+            <SceltaMultipla etichetta="Fratelli" valori={filtro.fratelli} onChange={set('fratelli')}
+              opzioni={[['si', 'Con fratelli'], ['no', 'Senza fratelli']]} />
+            <GruppiMultipli valori={filtro.gruppo} onChange={set('gruppo')}
+              opzioni={[...groups.map((g) => [g._id, labelGruppo(g)]), ['nessuno', 'Senza gruppo'], ...(admin ? [['trasferiti', 'Trasferiti']] : [])]} />
           </>
         )}
       </PannelloFiltri>
