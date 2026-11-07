@@ -15,7 +15,7 @@ async function riepilogoCorrente() {
 
 router.get('/', async (req, res) => {
   res.json({
-    corrente: await riepilogoCorrente(),
+    corrente: { ...(await riepilogoCorrente()), tesserati: await Member.countDocuments({ tesserato: true }) },
     stagioni: await Season.find().sort({ chiusaIl: -1 }).populate('chiusaDa', 'nome cognome'),
   });
 });
@@ -50,6 +50,12 @@ router.post('/chiudi', async (req, res) => {
     throw e;
   }
   res.status(201).json(stagione);
+});
+
+// Toglie il tesseramento a tutti i ragazzi, anche ai trasferiti. Iscrizioni e quote non cambiano.
+router.post('/azzera-tesseramenti', async (req, res) => {
+  const r = await Member.updateMany({ tesserato: true }, { tesserato: false });
+  res.json({ azzerati: r.modifiedCount || 0 });
 });
 
 module.exports = router;
