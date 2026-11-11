@@ -65,6 +65,9 @@ export default function Members() {
   const attivi = useMemo(() => members.filter((m) => !m.trasferito), [members]);
   const trasferiti = useMemo(() => members.filter((m) => m.trasferito), [members]);
 
+  // Il parroco non vede i non iscritti, tranne quando li cerca per nome (così non li iscrive una seconda volta)
+  const nascosto = (m) => parroco && statoDi(m) === 'noniscritti';
+
   const sezioni = useMemo(() => {
     const q = filtro.q.trim().toLowerCase();
     const nomeOk = (m) => !q || `${m.nome} ${m.cognome}`.toLowerCase().includes(q);
@@ -77,8 +80,12 @@ export default function Members() {
       { id: 'nessuno', nome: 'Senza gruppo', educatori: [], conta: true }]
       .filter((s) => gruppoOk(s.id))
       .map((s) => {
-        const tutti = attivi.filter((m) => (m.gruppo?._id || 'nessuno') === s.id);
-        return { ...s, tutti, iscritti: tutti.filter((m) => m.iscritto).length, visibili: tutti.filter(ok) };
+        const delGruppo = attivi.filter((m) => (m.gruppo?._id || 'nessuno') === s.id);
+        const tutti = delGruppo.filter((m) => !nascosto(m));
+        const cercati = q ? delGruppo.filter((m) => nascosto(m) && nomeOk(m) && fratelliOk(m)) : [];
+        const visibili = !cercati.length ? tutti.filter(ok) : [...tutti.filter(ok), ...cercati]
+          .sort((a, b) => a.cognome.localeCompare(b.cognome, 'it') || a.nome.localeCompare(b.nome, 'it'));
+        return { ...s, tutti, iscritti: tutti.filter((m) => m.iscritto).length, visibili };
       })
       .filter((s) => s.id !== 'nessuno' || s.tutti.length)
       .filter((s) => !(filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || q) || s.visibili.length);
@@ -89,11 +96,11 @@ export default function Members() {
       if (visibili.length || !(q || filtro.fratelli.length)) lista.push({ id: 'trasferiti', nome: 'Trasferiti in altre parrocchie', educatori: [], tutti: trasferiti, visibili });
     }
     return lista;
-  }, [attivi, trasferiti, groups, filtro, admin]);
+  }, [attivi, trasferiti, groups, filtro, admin, parroco]);
 
   // Totali: esclusi i ragazzi dei gruppi segnati "non contare nel totale"
   const esclusi = groups.filter((g) => g.contaNelTotale === false);
-  const conteggiati = attivi.filter((m) => !m.gruppo || !esclusi.some((g) => g._id === m.gruppo._id));
+  const conteggiati = attivi.filter((m) => !nascosto(m) && (!m.gruppo || !esclusi.some((g) => g._id === m.gruppo._id)));
   const totIscritti = conteggiati.filter((m) => m.iscritto).length;
   const totNonIscritti = conteggiati.filter((m) => statoDi(m) === 'noniscritti').length;
 

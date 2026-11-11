@@ -15,7 +15,7 @@ router.use(auth);
 router.param('id', async (req, res, next, id) => {
   try {
     const m = await Member.findById(id);
-    if (!m || (m.trasferito && req.user.ruolo !== 'admin') || nascondiAlParroco(req, m)) return res.status(404).json({ message: 'Ragazzo non trovato' });
+    if (!m || (m.trasferito && req.user.ruolo !== 'admin')) return res.status(404).json({ message: 'Ragazzo non trovato' });
     req.member = m;
     next();
   } catch (e) { next(e); }
@@ -37,12 +37,13 @@ function pulisci(body, admin = false) {
 
 // Cosa vede chi fa la richiesta. uso = 'pagina' | 'pdf' | 'xlsx'
 //   admin: tutto.  educatore: niente trasferiti né tesseramento.
-//   parroco: nella pagina niente tesseramento e niente non iscritti; PDF ed Excel come l'admin,
-//   ma nel PDF senza i non iscritti.
+//   parroco: nella pagina niente tesseramento (i non iscritti arrivano, ma la pagina li mostra solo nella ricerca);
+//   PDF ed Excel come l'admin, ma nel PDF senza i non iscritti.
 function vista(req, uso = 'pagina') {
   const r = req.user.ruolo;
   if (r === 'admin') return { admin: true, escludiNonIscritti: false };
-  if (r === 'parroco') return { admin: uso !== 'pagina', escludiNonIscritti: uso !== 'xlsx', parroco: true };
+  // Nella pagina il parroco riceve anche i non iscritti: li vede solo cercandoli per nome (per evitare doppie iscrizioni)
+  if (r === 'parroco') return { admin: uso !== 'pagina', escludiNonIscritti: uso === 'pdf', parroco: true };
   return { admin: false, escludiNonIscritti: false };
 }
 
