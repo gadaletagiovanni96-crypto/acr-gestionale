@@ -7,7 +7,7 @@ import { useImpostazioni } from '../impostazioni';
 const VUOTO = {
   nome: '', cognome: '', sesso: '', dataNascita: '', luogoNascita: '', codiceFiscale: '', indirizzo: '', citta: '', cap: '',
   telefono: '', email: '', nomeGenitore: '', telefonoGenitore: '', emailGenitore: '', allergie: '', note: '',
-  consensoPrivacy: false, gruppo: '', quotaVersata: '', dataVersamento: '', tesserato: false,
+  consensoPrivacy: false, consensoPrivacyAC: false, gruppo: '', quotaVersata: '', dataVersamento: '', tesserato: false,
 };
 const giorno = (d) => (d ? String(d).slice(0, 10) : '');
 
@@ -244,6 +244,9 @@ export default function MemberForm() {
             <Campo label="Allergie o intolleranze" wide><textarea rows={2} value={f.allergie} onChange={set('allergie')} /></Campo>
             <Campo label="Note" wide><textarea rows={2} value={f.note} onChange={set('note')} /></Campo>
             <label className="check wide"><input type="checkbox" checked={f.consensoPrivacy} onChange={set('consensoPrivacy')} /> Consenso al trattamento dei dati firmato dal genitore</label>
+            {user.ruolo === 'admin' && (
+              <label className="check wide"><input type="checkbox" checked={!!f.consensoPrivacyAC} onChange={set('consensoPrivacyAC')} /> Consenso privacy AC</label>
+            )}
           </div>
         </fieldset>
 

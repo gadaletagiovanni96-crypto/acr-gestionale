@@ -31,6 +31,7 @@ function pulisci(body, admin = false) {
   for (const k of ['gruppo', 'dataVersamento', 'dataNascita']) if (d[k] === '') d[k] = null;
   if ('quotaVersata' in d && (d.quotaVersata === '' || d.quotaVersata == null)) d.quotaVersata = 0;
   if (admin && 'tesserato' in body) d.tesserato = body.tesserato === true; // il tesseramento lo gestisce solo l'admin
+  if (admin && 'consensoPrivacyAC' in body) d.consensoPrivacyAC = body.consensoPrivacyAC === true; // anche il consenso privacy AC
   return d;
 }
 
@@ -315,7 +316,8 @@ router.get('/xlsx', async (req, res) => {
     ];
     if (s.trasferiti) cols.push({ k: 'trasf', t: 'Trasferito a', w: 28 });
     if (admin) cols.push({ k: 'fratelli', t: 'Fratelli (nome, cognome e gruppo)', w: 52 });
-    if (admin) cols.push({ k: 'tess', t: 'Tesserato', w: 12 }); // ultima colonna
+    if (admin) cols.push({ k: 'tess', t: 'Tesserato', w: 12 });
+    if (admin) cols.push({ k: 'pr', t: 'Pr', w: 8 }); // consenso privacy AC, ultima colonna
 
     const ws = wb.addWorksheet(nomeFoglio(s.titolo));
     ws.columns = cols.map((c) => ({ key: c.k, width: c.w }));
@@ -339,8 +341,9 @@ router.get('/xlsx', async (req, res) => {
         trasf: s.trasferiti ? `${m.parrocchiaTrasferimento}${m.dataTrasferimento ? ' (' + new Date(m.dataTrasferimento).toLocaleDateString('it-IT') + ')' : ''}` : undefined,
         fratelli: admin ? fratelliDi(m).join('; ') : undefined,
         tess: admin ? (m.tesserato ? 'Sì' : 'No') : undefined,
+        pr: admin ? (m.consensoPrivacyAC ? 'Sì' : 'No') : undefined,
       });
-      if (admin) fila.getCell(cols.length - 1).alignment = { wrapText: true, vertical: 'top' }; // la colonna dei fratelli è la penultima
+      if (admin) fila.getCell(cols.findIndex((c) => c.k === 'fratelli') + 1).alignment = { wrapText: true, vertical: 'top' }; // colonna dei fratelli
     });
     ws.getColumn('nascita').numFmt = 'dd/mm/yyyy';
     ws.getColumn('dataV').numFmt = 'dd/mm/yyyy';
