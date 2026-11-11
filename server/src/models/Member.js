@@ -23,6 +23,8 @@ const memberSchema = new Schema(
     note: { type: String, trim: true, default: '' },
     consensoPrivacy: { type: Boolean, default: false },
     tesserato: { type: Boolean, default: false },
+    // Consenso privacy dell'Azione Cattolica: lo vede e lo modifica solo l'admin
+    consensoPrivacyAC: { type: Boolean, default: false },
     // Ha deciso di non iscriversi (diverso da "da completare"): resta così anche dopo la chiusura dell'anno
     nonIscritto: { type: Boolean, default: false },
     // Gruppo e quota
