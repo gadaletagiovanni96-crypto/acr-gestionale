@@ -26,8 +26,10 @@ function totali(righe) {
     pagate,                                  // =SUM(J3:J12)
     richieste: somma((r) => r.richieste),    // =SUM(K3:K12)
     mancanti,                                // =SUM(L3:L12)
-    disdette: somma((r) => r.disdette),      // =SUM(M3:M12)
     daChiedere: pagate + mancanti,           // =SUM(C15, L13)
+    // Situazione parenti
+    altriSettori: somma((r) => r.altriSettori),  // tessere pagate ad altri settori
+    coppieFratelli: somma((r) => r.quotaC + r.quotaB), // n. tessere x25,60 (doppie) + n. tessere x9,60
   };
 }
 

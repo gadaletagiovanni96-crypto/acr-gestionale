@@ -107,8 +107,11 @@ export default function ContabilitaTessere() {
     pagate: somma((r) => r.totaleEffettivo),
     richieste: somma((r) => r.richieste),
     mancanti: somma((r) => r.mancanti),
-    disdette: somma((r) => r.disdette),
+    altriSettori: somma((r) => r.altriSettori),
+    doppie: somma((r) => r.quotaC),   // tessere da 25,60 (x2)
+    fratello: somma((r) => r.quotaB), // tessere da 9,60
   };
+  tot.coppieFratelli = tot.doppie + tot.fratello;
   tot.daChiedere = tot.pagate + tot.mancanti;
   const quota = (a, b) => (b ? `${Math.min(100, (a / b) * 100)}%` : 0);
 
@@ -144,7 +147,13 @@ export default function ContabilitaTessere() {
         <div className="tile da-chiedere"><span>Tessere da chiedere</span><strong>{tot.daChiedere}</strong><small>pagate + mancanti</small></div>
         <div className="tile neutro"><span>Richieste dai gruppi</span><strong>{tot.richieste}</strong></div>
         <div className="tile out"><span>Mancanti</span><strong>{tot.mancanti}</strong></div>
-        <div className="tile neutro"><span>Disdette</span><strong>{tot.disdette}</strong></div>
+        <div className="tile parenti">
+          <span>Situazione parenti</span>
+          <div className="parenti-voci">
+            <div><strong>{tot.altriSettori}</strong><small>pagate ad altri settori</small></div>
+            <div><strong>{tot.coppieFratelli}</strong><small>coppie di fratelli ({tot.doppie} da {euro(prezzi.quotaC)} + {tot.fratello} da {euro(prezzi.quotaB)})</small></div>
+          </div>
+        </div>
       </div>
 
       {!righe.length && <p className="empty">Non ci sono ancora gruppi. Creali dalla pagina Gruppi.</p>}
@@ -192,7 +201,6 @@ export default function ContabilitaTessere() {
             <div className="tess-conteggi">
               <label>Richieste<Contatore valore={r.richieste} etichetta={`Tessere richieste, ${r.nome}`} onChange={(v) => cambia(r.gruppo, 'richieste', v)} /></label>
               <label>Mancanti<Contatore valore={r.mancanti} etichetta={`Tessere mancanti, ${r.nome}`} onChange={(v) => cambia(r.gruppo, 'mancanti', v)} /></label>
-              <label>Disdette<Contatore valore={r.disdette} etichetta={`Disdette, ${r.nome}`} onChange={(v) => cambia(r.gruppo, 'disdette', v)} /></label>
             </div>
           </article>
         ))}

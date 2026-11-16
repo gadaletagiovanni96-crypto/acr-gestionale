@@ -347,6 +347,10 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .tile small { display: block; color: var(--muted); font-size: .8rem; }
 .tile.neutro { border-left-color: #8a97a5; }
 .tile.da-chiedere { border-left-color: var(--sun); }
+.tile.parenti { border-left-color: var(--sib); }
+.parenti-voci { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; }
+.parenti-voci > div { min-width: 0; }
+.tile.parenti strong { color: var(--sib); }
 
 .tess-gruppi { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 1rem; }
 .tess-gruppo { border-left: 6px solid var(--sun); display: flex; flex-direction: column; gap: .5rem; }
@@ -364,7 +368,7 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .tess-effettivo { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: .6rem; margin-top: .4rem; }
 .tess-effettivo strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 .tess-gruppo .bar { margin-top: 0; }
-.tess-conteggi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: .4rem; }
+.tess-conteggi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: .4rem; }
 .tess-conteggi label { font-size: .82rem; min-width: 0; }
 .tess-conteggi .contatore button { width: 1.9rem; }
 
