@@ -14,7 +14,6 @@ const prospettoSchema = new Schema(
     altriSettoriNomi: { type: String, trim: true, default: '' },
     richieste: conteggio,    // tessere richieste dal gruppo
     mancanti: conteggio,     // nel gruppo e non pagate ai maggiori
-    disdette: conteggio,
   },
   { timestamps: true }
 );

@@ -9,7 +9,7 @@ const { auth, soloAdmin } = require('../middleware/auth');
 router.use(auth, soloAdmin); // pagina riservata agli amministratori
 
 // ---------------------------------------------------------------- Contabilità tessere
-const CAMPI = [...TIPI, 'altriSettori', 'richieste', 'mancanti', 'disdette'];
+const CAMPI = [...TIPI, 'altriSettori', 'richieste', 'mancanti'];
 const euroXls = (n) => String(n.toFixed(2)).replace('.', ',');
 
 const educatoriDi = (g) => {
@@ -73,9 +73,9 @@ router.get('/prospetto/xlsx', async (req, res) => {
   const { prezzi, righe, totali: t } = await caricaProspetto();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Prospetto tessere', { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-  ws.columns = [16, 28, 12, 8, 8, 8, 14, 8, 26, 16, 14, 16, 11].map((width) => ({ width }));
+  ws.columns = [16, 34, 12, 8, 8, 8, 14, 8, 26, 16, 14, 16].map((width) => ({ width }));
 
-  ws.mergeCells('A1:M1');
+  ws.mergeCells('A1:L1');
   ws.getCell('A1').value = 'PROSPETTO RACCOLTA TESSERE ACR';
   ws.getCell('A1').font = { bold: true, size: 14 };
   ws.getCell('A1').alignment = { horizontal: 'center' };
@@ -83,7 +83,7 @@ router.get('/prospetto/xlsx', async (req, res) => {
   ws.getRow(2).values = ['GRUPPO', 'EDUCATORI', 'TOT IN €', `X${euroXls(prezzi.quotaA)}`, `X${euroXls(prezzi.quotaB)}`, `X${euroXls(prezzi.quotaC)}`,
     'TOT. TESSERE PAGATE AI MAGGIORI (in ACR)', 'TESSERE ACR PAGATE AD ALTRI SETTORI (1numero e 2cognome)', '',
     'TOT. EFFETTIVO TESSERE CON MAGGIORI - CAMPO AUTOMATICO', 'TOT. TESSERE RICHIESTE (dal gruppo)',
-    'MANCANTI (nel gruppo e non pagate ai maggiori)', 'DISDETTE'];
+    'MANCANTI (nel gruppo e non pagate ai maggiori)'];
   ws.mergeCells('H2:I2');
   ws.getRow(2).height = 60;
   ws.getRow(2).eachCell((c) => {
@@ -95,7 +95,7 @@ router.get('/prospetto/xlsx', async (req, res) => {
   const primo = 3, ultimo = primo + Math.max(righe.length, 1) - 1;
   righe.forEach((r, i) => {
     const n = primo + i;
-    ws.getRow(n).values = [r.nome, r.educatori || '//', null, r.quotaA, r.quotaB, r.quotaC, null, r.altriSettori, r.altriSettoriNomi, null, r.richieste, r.mancanti, r.disdette];
+    ws.getRow(n).values = [r.nome, r.educatori || '//', null, r.quotaA, r.quotaB, r.quotaC, null, r.altriSettori, r.altriSettoriNomi, null, r.richieste, r.mancanti];
     ws.getCell(`C${n}`).value = { formula: `D${n}*${prezzi.quotaA}+E${n}*${prezzi.quotaB}+F${n}*${prezzi.quotaC}`, result: r.totaleEuro };
     ws.getCell(`J${n}`).value = { formula: `SUM(D${n},E${n},2*F${n},H${n})`, result: r.totaleEffettivo };
   });
@@ -104,17 +104,35 @@ router.get('/prospetto/xlsx', async (req, res) => {
   scrivi(`J${rt}`, 'TOT.:');
   scrivi(`K${rt}`, { formula: `SUM(K${primo}:K${ultimo})`, result: t.richieste });
   scrivi(`L${rt}`, { formula: `SUM(L${primo}:L${ultimo})`, result: t.mancanti });
-  scrivi(`M${rt}`, { formula: `SUM(M${primo}:M${ultimo})`, result: t.disdette });
   scrivi(`B${rt + 1}`, 'TOT. in €');
   scrivi(`C${rt + 1}`, { formula: `SUM(C${primo}:C${ultimo})`, result: t.euro });
   scrivi(`B${rt + 2}`, 'TOT. Tessere Pagate');
   scrivi(`C${rt + 2}`, { formula: `SUM(J${primo}:J${ultimo})`, result: t.pagate });
   scrivi(`B${rt + 3}`, 'TOT. Tessere da chiedere');
   scrivi(`C${rt + 3}`, { formula: `SUM(C${rt + 2},L${rt})`, result: t.daChiedere });
-  for (let n = primo; n <= rt + 1; n++) ws.getCell(`C${n}`).numFmt = '#,##0.00 "€"';
+
   const linea = { style: 'thin' };
+
+  // Situazione parenti
+  const sp = rt + 5;
+  ws.mergeCells(`B${sp}:C${sp}`);
+  scrivi(`B${sp}`, 'SITUAZIONE PARENTI');
+  ws.getCell(`B${sp}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE4EE' } };
+  ws.getCell(`B${sp}`).alignment = { horizontal: 'center' };
+  const conta = (c) => righe.reduce((s, r) => s + r[c], 0);
+  scrivi(`B${sp + 1}`, 'Tessere pagate ad altri settori');
+  scrivi(`C${sp + 1}`, { formula: `SUM(H${primo}:H${ultimo})`, result: t.altriSettori });
+  ws.getCell(`B${sp + 2}`).value = `N. tessere X${euroXls(prezzi.quotaC)} (2 fratelli)`;
+  ws.getCell(`C${sp + 2}`).value = { formula: `SUM(F${primo}:F${ultimo})`, result: conta('quotaC') };
+  ws.getCell(`B${sp + 3}`).value = `N. tessere X${euroXls(prezzi.quotaB)} (fratello)`;
+  ws.getCell(`C${sp + 3}`).value = { formula: `SUM(E${primo}:E${ultimo})`, result: conta('quotaB') };
+  scrivi(`B${sp + 4}`, `Coppie di fratelli (X${euroXls(prezzi.quotaC)} + X${euroXls(prezzi.quotaB)})`);
+  scrivi(`C${sp + 4}`, { formula: `SUM(C${sp + 2},C${sp + 3})`, result: t.coppieFratelli });
+  for (let n = sp; n <= sp + 4; n++)
+    for (const c of ['B', 'C']) ws.getCell(`${c}${n}`).border = { top: linea, left: linea, bottom: linea, right: linea };
+  for (let n = primo; n <= rt + 1; n++) ws.getCell(`C${n}`).numFmt = '#,##0.00 "€"';
   for (let n = 2; n <= ultimo; n++)
-    for (let c = 1; c <= 13; c++) ws.getRow(n).getCell(c).border = { top: linea, left: linea, bottom: linea, right: linea };
+    for (let c = 1; c <= 12; c++) ws.getRow(n).getCell(c).border = { top: linea, left: linea, bottom: linea, right: linea };
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="contabilita-tessere-acr.xlsx"');
