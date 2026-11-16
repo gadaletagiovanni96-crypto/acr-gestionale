@@ -348,8 +348,9 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .tile.neutro { border-left-color: #8a97a5; }
 .tile.da-chiedere { border-left-color: var(--sun); }
 .tile.parenti { border-left-color: var(--sib); }
-.parenti-voci { display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; }
-.parenti-voci > div { min-width: 0; }
+.parenti-voci { display: flex; gap: 1.25rem; }
+.parenti-voci > div { min-width: 0; white-space: nowrap; }
+.parenti-voci small { display: inline; font-size: .85rem; }
 .tile.parenti strong { color: var(--sib); }
 
 .tess-gruppi { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 1rem; }
@@ -382,6 +383,7 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 
 @media (max-width: 640px) {
   .tess-totali { grid-template-columns: repeat(2, 1fr); }
+  .tess-totali .tile.in, .tess-totali .tile.parenti { grid-column: 1 / -1; }
   .tess-gruppi { grid-template-columns: 1fr; }
   .tess-voce { grid-template-columns: minmax(0, 1fr) auto 4.6rem; gap: .5rem; }
   .contatore button { min-height: 44px; width: 2.75rem; }

@@ -150,9 +150,10 @@ export default function ContabilitaTessere() {
         <div className="tile parenti">
           <span>Situazione parenti</span>
           <div className="parenti-voci">
-            <div><strong>{tot.altriSettori}</strong><small>pagate ad altri settori</small></div>
-            <div><strong>{tot.coppieFratelli}</strong><small>coppie di fratelli ({tot.doppie} da {euro(prezzi.quotaC)} + {tot.fratello} da {euro(prezzi.quotaB)})</small></div>
+            <div><strong>{tot.altriSettori}</strong> <small>altri settori</small></div>
+            <div><strong>{tot.coppieFratelli}</strong> <small>coppie di fratelli</small></div>
           </div>
+          <small>coppie = {tot.doppie} da {euro(prezzi.quotaC)} + {tot.fratello} da {euro(prezzi.quotaB)}</small>
         </div>
       </div>
 
