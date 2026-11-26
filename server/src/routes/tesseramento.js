@@ -141,14 +141,17 @@ router.get('/prospetto/xlsx', async (req, res) => {
 });
 
 // ---------------------------------------------------------------- Tessere per gruppo
-// Ragazzi di un gruppo (oppure "nessuno" = senza gruppo) con lo stato del tesseramento e i fratelli collegati
+// Ragazzi di un gruppo (oppure "nessuno" = senza gruppo) con lo stato del tesseramento e i fratelli collegati.
+// I "Non iscritti" non compaiono: né nell'elenco, né tra i fratelli, né nel conteggio.
+const ATTIVO = { trasferito: { $ne: true }, nonIscritto: { $ne: true } };
+
 router.get('/', async (req, res) => {
   const { gruppo } = req.query;
   if (!gruppo) return res.status(400).json({ message: 'Scegli un gruppo' });
-  const ragazzi = await Member.find({ trasferito: { $ne: true }, gruppo: gruppo === 'nessuno' ? null : gruppo }).sort({ cognome: 1, nome: 1 });
+  const ragazzi = await Member.find({ ...ATTIVO, gruppo: gruppo === 'nessuno' ? null : gruppo }).sort({ cognome: 1, nome: 1 });
   const famiglie = [...new Set(ragazzi.map((r) => r.familyId).filter(Boolean).map(String))];
   const parenti = famiglie.length
-    ? await Member.find({ familyId: { $in: famiglie }, trasferito: { $ne: true } }).populate('gruppo', 'nome').select('nome cognome familyId gruppo tesserato')
+    ? await Member.find({ familyId: { $in: famiglie }, ...ATTIVO }).populate('gruppo', 'nome').select('nome cognome familyId gruppo tesserato')
     : [];
   res.json(ragazzi.map((r) => ({
     _id: r._id, nome: r.nome, cognome: r.cognome, dataNascita: r.dataNascita, tesserato: !!r.tesserato,
@@ -170,7 +173,7 @@ router.post('/:id', async (req, res) => {
 
   const aggiornati = [String(m._id)];
   if (tesserato && ancheFratelli === true && m.familyId) {
-    const fratelli = await Member.find({ familyId: m.familyId, _id: { $ne: m._id }, trasferito: { $ne: true }, tesserato: { $ne: true } }).select('_id');
+    const fratelli = await Member.find({ familyId: m.familyId, _id: { $ne: m._id }, ...ATTIVO, tesserato: { $ne: true } }).select('_id');
     if (fratelli.length) {
       await Member.updateMany({ _id: { $in: fratelli.map((f) => f._id) } }, { tesserato: true });
       aggiornati.push(...fratelli.map((f) => String(f._id)));
