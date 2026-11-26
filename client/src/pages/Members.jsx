@@ -98,6 +98,9 @@ export default function Members() {
     return lista;
   }, [attivi, trasferiti, groups, filtro, admin, parroco]);
 
+  // Filtri che riducono i ragazzi mostrati (il solo filtro sui gruppi non li riduce)
+  const filtriAttivi = !!(filtro.iscrizione.length || filtro.tesserato.length || filtro.fratelli.length || filtro.q.trim());
+
   // Totali: esclusi i ragazzi dei gruppi segnati "non contare nel totale"
   const esclusi = groups.filter((g) => g.contaNelTotale === false);
   const conteggiati = attivi.filter((m) => !nascosto(m) && (!m.gruppo || !esclusi.some((g) => g._id === m.gruppo._id)));
@@ -179,6 +182,10 @@ export default function Members() {
       {err && <p className="error">{err}</p>}
       {loading && <p className="muted">Caricamento…</p>}
       {!loading && !sezioni.length && <p className="empty">Nessun ragazzo corrisponde ai filtri.</p>}
+      {!loading && filtriAttivi && sezioni.length > 0 && (() => {
+        const n = sezioni.reduce((a, s) => a + s.visibili.length, 0);
+        return <p className="muted risultati-filtri">{n} ragazz{n === 1 ? 'o corrisponde' : 'i corrispondono'} ai filtri</p>;
+      })()}
 
       {sezioni.map((s) => {
         const tr = s.id === 'trasferiti';
@@ -186,7 +193,11 @@ export default function Members() {
           <section className={`group${tr ? ' trasferiti' : ''}`} key={s.id}>
             <header>
               <div>
-                <h2>{s.nome}</h2>
+                <h2>
+                  {s.nome}
+                  {/* Con i filtri attivi: quanti ragazzi del gruppo corrispondono */}
+                  {filtriAttivi && <span className="ricorrenze">{s.visibili.length} trovat{s.visibili.length === 1 ? 'o' : 'i'}</span>}
+                </h2>
                 <p className="muted">
                   {tr ? 'Visibili solo agli amministratori'
                     : s.educatori.length ? 'Educatori: ' + s.educatori.map((e) => `${e.nome} ${e.cognome}`.trim()).join(', ')
