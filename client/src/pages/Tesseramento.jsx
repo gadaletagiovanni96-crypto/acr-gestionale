@@ -60,7 +60,7 @@ export default function Tesseramento() {
       <label className="tess-scelta">Gruppo
         <select value={gruppo} onChange={(e) => setGruppo(e.target.value)}>
           <option value="">Scegli un gruppo…</option>
-          {gruppi.map((g) => <option key={g._id} value={g._id}>{labelGruppo(g)} ({g.numeroRagazzi})</option>)}
+          {gruppi.map((g) => <option key={g._id} value={g._id}>{labelGruppo(g)} ({g.numeroTesserabili ?? g.numeroRagazzi})</option>)}
           <option value="nessuno">Senza gruppo</option>
         </select>
       </label>

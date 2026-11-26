@@ -13,11 +13,13 @@ router.get('/', async (req, res) => {
     Group.find().populate('educatori', 'nome cognome').sort({ nome: 1 }),
     Member.aggregate([
       { $match: { gruppo: { $ne: null }, trasferito: { $ne: true } } },
-      { $group: { _id: '$gruppo', n: { $sum: 1 } } },
+      // t = ragazzi senza i "Non iscritti" (usato dalla pagina Tesseramento)
+      { $group: { _id: '$gruppo', n: { $sum: 1 }, t: { $sum: { $cond: [{ $eq: ['$nonIscritto', true] }, 0, 1] } } } },
     ]),
   ]);
-  const n = Object.fromEntries(conteggi.map((c) => [String(c._id), c.n]));
-  res.json(gruppi.map((g) => ({ ...g.toJSON(), numeroRagazzi: n[String(g._id)] || 0 })));
+  const n = Object.fromEntries(conteggi.map((c) => [String(c._id), c]));
+  // numeroRagazzi = tutti (serve al passaggio di gruppo); numeroTesserabili = esclusi i non iscritti
+  res.json(gruppi.map((g) => ({ ...g.toJSON(), numeroRagazzi: n[String(g._id)]?.n || 0, numeroTesserabili: n[String(g._id)]?.t || 0 })));
 });
 
 router.post('/', gestisce, async (req, res) => {
