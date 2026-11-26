@@ -390,3 +390,8 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
   .tess-conteggi .contatore button { width: 1.9rem; }
   .tess-conteggi .contatore input { min-width: 1.5rem; }
 }
+
+/* Numero di ragazzi trovati nel gruppo quando ci sono filtri attivi */
+.group h2 .ricorrenze { display: inline-block; margin-left: .5rem; padding: .1rem .5rem; border-radius: 99px; background: var(--sib-bg);
+  color: var(--sib); font-size: .75rem; font-weight: 600; vertical-align: middle; }
+.risultati-filtri { margin: -.75rem 0 1rem; font-size: .9rem; }
