@@ -152,8 +152,20 @@ export default function ContabilitaTessere() {
         <div className="tile out"><span>Mancanti</span><strong>{tot.mancanti}</strong></div>
       </div>
 
-      <section className="card parenti-card">
-        <h2>Situazione parenti <small>contata in ragazzi</small></h2>
+      {/* Tendina chiusa: si vede solo il totale e l'esito del controllo */}
+      <details className="card parenti-card">
+        <summary>
+          <span className="parenti-titolo">Situazione parenti</span>
+          <span className="parenti-sintesi">
+            <strong>{tot.daParenti}</strong> ragazzi
+            {differenza !== null && (
+              <span className={`parenti-esito ${differenza === 0 ? 'ok' : differenza > 0 ? 'manca' : 'errore'}`}>
+                {differenza === 0 ? '✓ conti coincidono' : differenza > 0 ? `${differenza} da verificare` : `${-differenza} di troppo`}
+              </span>
+            )}
+          </span>
+        </summary>
+        <p className="muted parenti-nota">Contata in ragazzi: tessera doppia = 2, coppia 16 € + 9,60 € = 2, altri settori = 1.</p>
         <div className="parenti-griglia">
           <div><strong>{tot.doppie * 2}</strong><span>con tessera doppia</span><small>{tot.doppie} × {euro(prezzi.quotaC)} (2 fratelli)</small></div>
           <div><strong>{tot.fratello * 2}</strong><span>con tessera fratello</span><small>{tot.fratello} × ({euro(prezzi.quotaA)} + {euro(prezzi.quotaB)})</small></div>
@@ -175,7 +187,7 @@ export default function ContabilitaTessere() {
             ({-differenza} in più). Controlla i numeri dei gruppi o collega i fratelli mancanti.
           </p>
         ))}
-      </section>
+      </details>
 
       {!righe.length && <p className="empty">Non ci sono ancora gruppi. Creali dalla pagina Gruppi.</p>}
 
