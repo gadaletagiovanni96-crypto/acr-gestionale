@@ -343,7 +343,8 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .prezzo.modifica { padding: .25rem .8rem; border-style: solid; }
 .prezzo.modifica input { width: 5.5rem; padding: .25rem .4rem; font-weight: 700; text-align: right; }
 
-.tess-totali { grid-template-columns: repeat(3, 1fr); }
+.tess-totali { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 900px) and (min-width: 641px) { .tess-totali { grid-template-columns: repeat(3, 1fr); } }
 .tile small { display: block; color: var(--muted); font-size: .8rem; }
 .tile.neutro { border-left-color: #8a97a5; }
 .tile.da-chiedere { border-left-color: var(--sun); }
@@ -383,7 +384,7 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 
 @media (max-width: 640px) {
   .tess-totali { grid-template-columns: repeat(2, 1fr); }
-  .tess-totali .tile.in, .tess-totali .tile.parenti { grid-column: 1 / -1; }
+  .tess-totali .tile.in { grid-column: 1 / -1; }
   .tess-gruppi { grid-template-columns: 1fr; }
   .tess-voce { grid-template-columns: minmax(0, 1fr) auto 4.6rem; gap: .5rem; }
   .contatore button { min-height: 44px; width: 2.75rem; }
@@ -395,3 +396,20 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .group h2 .ricorrenze { display: inline-block; margin-left: .5rem; padding: .1rem .5rem; border-radius: 99px; background: var(--sib-bg);
   color: var(--sib); font-size: .75rem; font-weight: 600; vertical-align: middle; }
 .risultati-filtri { margin: -.75rem 0 1rem; font-size: .9rem; }
+
+/* Situazione parenti (contabilità tessere), contata in ragazzi */
+.parenti-card { border-left: 6px solid var(--sib); margin-bottom: 1.25rem; }
+.parenti-card h2 small { font-size: .85rem; font-weight: 400; color: var(--muted); margin-left: .35rem; }
+.parenti-griglia { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin-top: .6rem; }
+.parenti-griglia > div { display: flex; flex-direction: column; gap: .1rem; }
+.parenti-griglia strong { font-size: 1.5rem; color: var(--sib); font-variant-numeric: tabular-nums; }
+.parenti-griglia span { font-size: .9rem; }
+.parenti-griglia small { color: var(--muted); font-size: .8rem; }
+.parenti-griglia .totale { border-left: 1px solid var(--line); padding-left: .9rem; }
+.parenti-verifica { margin: .9rem 0 0; padding: .6rem .8rem; border-radius: var(--radius); font-size: .92rem; }
+.parenti-verifica.ok { background: var(--ok-bg); color: var(--ok); }
+.parenti-verifica.errore { background: var(--warn-bg); color: var(--warn); }
+@media (max-width: 640px) {
+  .parenti-griglia { grid-template-columns: repeat(2, 1fr); }
+  .parenti-griglia .totale { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: .5rem; grid-column: 1 / -1; }
+}

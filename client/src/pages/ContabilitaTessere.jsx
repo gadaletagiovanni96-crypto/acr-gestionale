@@ -108,10 +108,13 @@ export default function ContabilitaTessere() {
     richieste: somma((r) => r.richieste),
     mancanti: somma((r) => r.mancanti),
     altriSettori: somma((r) => r.altriSettori),
-    doppie: somma((r) => r.quotaC),   // tessere da 25,60 (x2)
-    fratello: somma((r) => r.quotaB), // tessere da 9,60
+    doppie: somma((r) => r.quotaC),   // tessere da 25,60: ognuna copre 2 fratelli
+    fratello: somma((r) => r.quotaB), // tessere da 9,60: ognuna copre 1 fratello
   };
-  tot.coppieFratelli = tot.doppie + tot.fratello;
+  // Situazione parenti contata in ragazzi, così funziona anche con famiglie di 3 o più fratelli
+  tot.daParenti = tot.doppie * 2 + tot.fratello + tot.altriSettori;
+  const nelGestionale = dati.ragazziConParenti;
+  const differenza = nelGestionale == null ? null : nelGestionale - tot.daParenti;
   tot.daChiedere = tot.pagate + tot.mancanti;
   const quota = (a, b) => (b ? `${Math.min(100, (a / b) * 100)}%` : 0);
 
@@ -147,15 +150,28 @@ export default function ContabilitaTessere() {
         <div className="tile da-chiedere"><span>Tessere da chiedere</span><strong>{tot.daChiedere}</strong><small>pagate + mancanti</small></div>
         <div className="tile neutro"><span>Richieste dai gruppi</span><strong>{tot.richieste}</strong></div>
         <div className="tile out"><span>Mancanti</span><strong>{tot.mancanti}</strong></div>
-        <div className="tile parenti">
-          <span>Situazione parenti</span>
-          <div className="parenti-voci">
-            <div><strong>{tot.altriSettori}</strong> <small>altri settori</small></div>
-            <div><strong>{tot.coppieFratelli}</strong> <small>coppie di fratelli</small></div>
-          </div>
-          <small>coppie = {tot.doppie} da {euro(prezzi.quotaC)} + {tot.fratello} da {euro(prezzi.quotaB)}</small>
-        </div>
       </div>
+
+      <section className="card parenti-card">
+        <h2>Situazione parenti <small>contata in ragazzi</small></h2>
+        <div className="parenti-griglia">
+          <div><strong>{tot.doppie * 2}</strong><span>con tessera doppia</span><small>{tot.doppie} × {euro(prezzi.quotaC)} (2 fratelli)</small></div>
+          <div><strong>{tot.fratello}</strong><span>con tessera fratello</span><small>{tot.fratello} × {euro(prezzi.quotaB)}</small></div>
+          <div><strong>{tot.altriSettori}</strong><span>pagati da altri settori</span><small>adulti, giovanissimi…</small></div>
+          <div className="totale"><strong>{tot.daParenti}</strong><span>ragazzi con quota legata a parenti</span></div>
+        </div>
+        {differenza !== null && (differenza >= 0 ? (
+          <p className="parenti-verifica ok">
+            Nel gestionale <strong>{nelGestionale}</strong> ragazzi hanno fratelli o parenti collegati.
+            {differenza === 0 ? ' I conti coincidono.' : ` Gli altri ${differenza} pagano la tessera intera da ${euro(prezzi.quotaA)} o non hanno ancora pagato.`}
+          </p>
+        ) : (
+          <p className="parenti-verifica errore" role="alert">
+            Attenzione: le tessere coprono <strong>{tot.daParenti}</strong> ragazzi, ma nel gestionale solo <strong>{nelGestionale}</strong> hanno fratelli o parenti collegati
+            ({-differenza} in più). Controlla i numeri dei gruppi o collega i fratelli mancanti.
+          </p>
+        ))}
+      </section>
 
       {!righe.length && <p className="empty">Non ci sono ancora gruppi. Creali dalla pagina Gruppi.</p>}
 
