@@ -17,12 +17,20 @@ const educatoriDi = (g) => {
   return n.length > 1 ? `${n.slice(0, -1).join(', ')} e ${n[n.length - 1]}` : n[0] || '';
 };
 
+// Ragazzi ACR collegati ad almeno un fratello o parente nel gestionale: serve a verificare la "Situazione parenti".
+// Esclusi trasferiti, non iscritti e i gruppi fuori dal totale (es. Adulti, Giovanissimi).
+async function ragazziConParentiNelGestionale() {
+  const esclusi = (await Group.find({ contaNelTotale: false }).select('_id')).map((g) => g._id);
+  return Member.countDocuments({ familyId: { $ne: null }, trasferito: { $ne: true }, nonIscritto: { $ne: true }, gruppo: { $nin: esclusi } });
+}
+
 // Una riga per ogni gruppo, anche se non è ancora stata compilata
 async function caricaProspetto() {
-  const [gruppi, salvate, prezzi] = await Promise.all([
+  const [gruppi, salvate, prezzi, conParenti] = await Promise.all([
     Group.find().populate('educatori', 'nome').sort({ nome: 1 }),
     ProspettoTessere.find(),
     leggiPrezzi(),
+    ragazziConParentiNelGestionale(),
   ]);
   const perGruppo = Object.fromEntries(salvate.map((p) => [String(p.gruppo), p]));
   const righe = gruppi.map((g) => {
@@ -31,7 +39,7 @@ async function caricaProspetto() {
     CAMPI.forEach((c) => { r[c] = p?.[c] || 0; });
     return { ...r, totaleEuro: totaleEuro(r, prezzi), totaleEffettivo: totaleEffettivo(r) };
   });
-  return { prezzi, vale: VALE, righe, totali: totali(righe) };
+  return { prezzi, vale: VALE, righe, totali: totali(righe), ragazziConParenti: conParenti };
 }
 
 router.get('/prospetto', async (req, res) => res.json(await caricaProspetto()));
@@ -70,7 +78,7 @@ router.delete('/prospetto', async (req, res) => {
 
 // Foglio Excel con la stessa struttura e le stesse formule del prospetto originale
 router.get('/prospetto/xlsx', async (req, res) => {
-  const { prezzi, righe, totali: t } = await caricaProspetto();
+  const { prezzi, righe, totali: t, ragazziConParenti } = await caricaProspetto();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Prospetto tessere', { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   ws.columns = [16, 34, 12, 8, 8, 8, 14, 8, 26, 16, 14, 16].map((width) => ({ width }));
@@ -113,22 +121,26 @@ router.get('/prospetto/xlsx', async (req, res) => {
 
   const linea = { style: 'thin' };
 
-  // Situazione parenti
+  // Situazione parenti, contata in ragazzi
   const sp = rt + 5;
   ws.mergeCells(`B${sp}:C${sp}`);
-  scrivi(`B${sp}`, 'SITUAZIONE PARENTI');
+  scrivi(`B${sp}`, 'SITUAZIONE PARENTI (in ragazzi)');
   ws.getCell(`B${sp}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE4EE' } };
   ws.getCell(`B${sp}`).alignment = { horizontal: 'center' };
-  const conta = (c) => righe.reduce((s, r) => s + r[c], 0);
-  scrivi(`B${sp + 1}`, 'Tessere pagate ad altri settori');
-  scrivi(`C${sp + 1}`, { formula: `SUM(H${primo}:H${ultimo})`, result: t.altriSettori });
-  ws.getCell(`B${sp + 2}`).value = `N. tessere X${euroXls(prezzi.quotaC)} (2 fratelli)`;
-  ws.getCell(`C${sp + 2}`).value = { formula: `SUM(F${primo}:F${ultimo})`, result: conta('quotaC') };
-  ws.getCell(`B${sp + 3}`).value = `N. tessere X${euroXls(prezzi.quotaB)} (fratello)`;
-  ws.getCell(`C${sp + 3}`).value = { formula: `SUM(E${primo}:E${ultimo})`, result: conta('quotaB') };
-  scrivi(`B${sp + 4}`, `Coppie di fratelli (X${euroXls(prezzi.quotaC)} + X${euroXls(prezzi.quotaB)})`);
-  scrivi(`C${sp + 4}`, { formula: `SUM(C${sp + 2},C${sp + 3})`, result: t.coppieFratelli });
-  for (let n = sp; n <= sp + 4; n++)
+  ws.getCell(`B${sp + 1}`).value = `Ragazzi con tessera doppia X${euroXls(prezzi.quotaC)} (2 per tessera)`;
+  ws.getCell(`C${sp + 1}`).value = { formula: `2*SUM(F${primo}:F${ultimo})`, result: t.ragazziDoppie };
+  ws.getCell(`B${sp + 2}`).value = `Ragazzi con tessera X${euroXls(prezzi.quotaA)} + X${euroXls(prezzi.quotaB)} (2 per coppia)`;
+  ws.getCell(`C${sp + 2}`).value = { formula: `2*SUM(E${primo}:E${ultimo})`, result: t.ragazziFratello };
+  ws.getCell(`B${sp + 3}`).value = 'Ragazzi con tessera pagata da altri settori';
+  ws.getCell(`C${sp + 3}`).value = { formula: `SUM(H${primo}:H${ultimo})`, result: t.altriSettori };
+  scrivi(`B${sp + 4}`, 'Totale ragazzi con quota legata a parenti');
+  scrivi(`C${sp + 4}`, { formula: `SUM(C${sp + 1}:C${sp + 3})`, result: t.ragazziDaParenti });
+  ws.getCell(`B${sp + 5}`).value = 'Ragazzi con fratelli o parenti nel gestionale';
+  ws.getCell(`C${sp + 5}`).value = ragazziConParenti;
+  ws.getCell(`B${sp + 6}`).value = 'Differenza (deve essere 0: se positiva mancano tessere, se negativa ce ne sono troppe)';
+  ws.getCell(`C${sp + 6}`).value = { formula: `C${sp + 5}-C${sp + 4}`, result: ragazziConParenti - t.ragazziDaParenti };
+  ws.getCell(`B${sp + 6}`).alignment = { wrapText: true };
+  for (let n = sp; n <= sp + 6; n++)
     for (const c of ['B', 'C']) ws.getCell(`${c}${n}`).border = { top: linea, left: linea, bottom: linea, right: linea };
   for (let n = primo; n <= rt + 1; n++) ws.getCell(`C${n}`).numFmt = '#,##0.00 "€"';
   for (let n = 2; n <= ultimo; n++)

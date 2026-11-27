@@ -21,16 +21,19 @@ function totali(righe) {
   const somma = (f) => righe.reduce((s, r) => s + f(r), 0);
   const pagate = somma((r) => r.totaleEffettivo);
   const mancanti = somma((r) => r.mancanti);
-  return {
+  const t = {
     euro: tondo(somma((r) => r.totaleEuro)),
     pagate,                                  // =SUM(J3:J12)
     richieste: somma((r) => r.richieste),    // =SUM(K3:K12)
     mancanti,                                // =SUM(L3:L12)
     daChiedere: pagate + mancanti,           // =SUM(C15, L13)
-    // Situazione parenti
-    altriSettori: somma((r) => r.altriSettori),  // tessere pagate ad altri settori
-    coppieFratelli: somma((r) => r.quotaC + r.quotaB), // n. tessere x25,60 (doppie) + n. tessere x9,60
+    // Situazione parenti, contata in RAGAZZI (non in coppie: una famiglia può avere 3 fratelli)
+    altriSettori: somma((r) => r.altriSettori),        // ragazzi la cui tessera è pagata da adulti/giovanissimi
+    ragazziDoppie: somma((r) => r.quotaC * 2),          // ogni tessera doppia copre 2 fratelli
+    ragazziFratello: somma((r) => r.quotaB * 2),        // ogni tessera da 9,60 va con un fratello da 16 €: 2 ragazzi
   };
+  t.ragazziDaParenti = t.altriSettori + t.ragazziDoppie + t.ragazziFratello;
+  return t;
 }
 
 module.exports = { TIPI, VALE, leggiPrezzi, salvaPrezzi, totaleEuro, totaleEffettivo, totali };
