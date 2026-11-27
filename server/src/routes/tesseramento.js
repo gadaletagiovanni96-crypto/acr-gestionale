@@ -129,15 +129,15 @@ router.get('/prospetto/xlsx', async (req, res) => {
   ws.getCell(`B${sp}`).alignment = { horizontal: 'center' };
   ws.getCell(`B${sp + 1}`).value = `Ragazzi con tessera doppia X${euroXls(prezzi.quotaC)} (2 per tessera)`;
   ws.getCell(`C${sp + 1}`).value = { formula: `2*SUM(F${primo}:F${ultimo})`, result: t.ragazziDoppie };
-  ws.getCell(`B${sp + 2}`).value = `Ragazzi con tessera fratello X${euroXls(prezzi.quotaB)}`;
-  ws.getCell(`C${sp + 2}`).value = { formula: `SUM(E${primo}:E${ultimo})`, result: t.ragazziFratello };
+  ws.getCell(`B${sp + 2}`).value = `Ragazzi con tessera X${euroXls(prezzi.quotaA)} + X${euroXls(prezzi.quotaB)} (2 per coppia)`;
+  ws.getCell(`C${sp + 2}`).value = { formula: `2*SUM(E${primo}:E${ultimo})`, result: t.ragazziFratello };
   ws.getCell(`B${sp + 3}`).value = 'Ragazzi con tessera pagata da altri settori';
   ws.getCell(`C${sp + 3}`).value = { formula: `SUM(H${primo}:H${ultimo})`, result: t.altriSettori };
   scrivi(`B${sp + 4}`, 'Totale ragazzi con quota legata a parenti');
   scrivi(`C${sp + 4}`, { formula: `SUM(C${sp + 1}:C${sp + 3})`, result: t.ragazziDaParenti });
   ws.getCell(`B${sp + 5}`).value = 'Ragazzi con fratelli o parenti nel gestionale';
   ws.getCell(`C${sp + 5}`).value = ragazziConParenti;
-  ws.getCell(`B${sp + 6}`).value = 'Differenza (quota intera o non ancora pagato; se negativa c\'è un errore)';
+  ws.getCell(`B${sp + 6}`).value = 'Differenza (deve essere 0: se positiva mancano tessere, se negativa ce ne sono troppe)';
   ws.getCell(`C${sp + 6}`).value = { formula: `C${sp + 5}-C${sp + 4}`, result: ragazziConParenti - t.ragazziDaParenti };
   ws.getCell(`B${sp + 6}`).alignment = { wrapText: true };
   for (let n = sp; n <= sp + 6; n++)

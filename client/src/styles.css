@@ -408,6 +408,7 @@ button.prezzo:hover { border-style: solid; background: #d9def5; }
 .parenti-griglia .totale { border-left: 1px solid var(--line); padding-left: .9rem; }
 .parenti-verifica { margin: .9rem 0 0; padding: .6rem .8rem; border-radius: var(--radius); font-size: .92rem; }
 .parenti-verifica.ok { background: var(--ok-bg); color: var(--ok); }
+.parenti-verifica.manca { background: #fff6d6; color: #7a5b00; }
 .parenti-verifica.errore { background: var(--warn-bg); color: var(--warn); }
 @media (max-width: 640px) {
   .parenti-griglia { grid-template-columns: repeat(2, 1fr); }

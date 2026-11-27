@@ -30,7 +30,7 @@ function totali(righe) {
     // Situazione parenti, contata in RAGAZZI (non in coppie: una famiglia può avere 3 fratelli)
     altriSettori: somma((r) => r.altriSettori),        // ragazzi la cui tessera è pagata da adulti/giovanissimi
     ragazziDoppie: somma((r) => r.quotaC * 2),          // ogni tessera doppia copre 2 fratelli
-    ragazziFratello: somma((r) => r.quotaB),            // ogni tessera da 9,60 copre 1 fratello
+    ragazziFratello: somma((r) => r.quotaB * 2),        // ogni tessera da 9,60 va con un fratello da 16 €: 2 ragazzi
   };
   t.ragazziDaParenti = t.altriSettori + t.ragazziDoppie + t.ragazziFratello;
   return t;

@@ -109,10 +109,10 @@ export default function ContabilitaTessere() {
     mancanti: somma((r) => r.mancanti),
     altriSettori: somma((r) => r.altriSettori),
     doppie: somma((r) => r.quotaC),   // tessere da 25,60: ognuna copre 2 fratelli
-    fratello: somma((r) => r.quotaB), // tessere da 9,60: ognuna copre 1 fratello
+    fratello: somma((r) => r.quotaB), // tessere da 9,60: ognuna va con un fratello che paga 16 €
   };
-  // Situazione parenti contata in ragazzi, così funziona anche con famiglie di 3 o più fratelli
-  tot.daParenti = tot.doppie * 2 + tot.fratello + tot.altriSettori;
+  // Situazione parenti contata in ragazzi: doppia = 2, coppia 16 € + 9,60 € = 2, altri settori = 1
+  tot.daParenti = tot.doppie * 2 + tot.fratello * 2 + tot.altriSettori;
   const nelGestionale = dati.ragazziConParenti;
   const differenza = nelGestionale == null ? null : nelGestionale - tot.daParenti;
   tot.daChiedere = tot.pagate + tot.mancanti;
@@ -156,14 +156,18 @@ export default function ContabilitaTessere() {
         <h2>Situazione parenti <small>contata in ragazzi</small></h2>
         <div className="parenti-griglia">
           <div><strong>{tot.doppie * 2}</strong><span>con tessera doppia</span><small>{tot.doppie} × {euro(prezzi.quotaC)} (2 fratelli)</small></div>
-          <div><strong>{tot.fratello}</strong><span>con tessera fratello</span><small>{tot.fratello} × {euro(prezzi.quotaB)}</small></div>
+          <div><strong>{tot.fratello * 2}</strong><span>con tessera fratello</span><small>{tot.fratello} × ({euro(prezzi.quotaA)} + {euro(prezzi.quotaB)})</small></div>
           <div><strong>{tot.altriSettori}</strong><span>pagati da altri settori</span><small>adulti, giovanissimi…</small></div>
           <div className="totale"><strong>{tot.daParenti}</strong><span>ragazzi con quota legata a parenti</span></div>
         </div>
-        {differenza !== null && (differenza >= 0 ? (
+        {differenza !== null && (differenza === 0 ? (
           <p className="parenti-verifica ok">
-            Nel gestionale <strong>{nelGestionale}</strong> ragazzi hanno fratelli o parenti collegati.
-            {differenza === 0 ? ' I conti coincidono.' : ` Gli altri ${differenza} pagano la tessera intera da ${euro(prezzi.quotaA)} o non hanno ancora pagato.`}
+            I conti coincidono: anche nel gestionale <strong>{nelGestionale}</strong> ragazzi hanno fratelli o parenti collegati.
+          </p>
+        ) : differenza > 0 ? (
+          <p className="parenti-verifica manca" role="status">
+            Nel gestionale <strong>{nelGestionale}</strong> ragazzi hanno fratelli o parenti collegati: {differenza === 1 ? 'uno non risulta' : `${differenza} non risultano`} ancora
+            nelle tessere dei parenti (non hanno pagato o mancano nei conteggi dei gruppi).
           </p>
         ) : (
           <p className="parenti-verifica errore" role="alert">
